@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class PlayerApiController extends Controller
@@ -26,6 +27,7 @@ class PlayerApiController extends Controller
         // no email — nothing personally identifying is collected.
         $data = $request->validate([
             'nickname'      => 'required|string|min:2|max:50',
+            'pin'           => ['required', 'digits:4'],
             'consent'       => 'required|accepted',
             'has_visa_card' => 'boolean',
         ]);
@@ -44,6 +46,7 @@ class PlayerApiController extends Controller
                 'nickname'      => $nickname,
                 'consent'       => true,
                 'has_visa_card' => $data['has_visa_card'] ?? false,
+                'login_pin_hash' => Hash::make($data['pin']),
             ]);
         } catch (UniqueConstraintViolationException) {
             // Simultaneous registration of the same nickname — first one wins
@@ -58,6 +61,40 @@ class PlayerApiController extends Controller
             'session_token' => $player->issueSessionToken(),
             'message'   => 'You\'re in! 🎉',
         ], 201);
+    }
+
+    /** Restore a player on this or another device without collecting personal data. */
+    public function login(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'nickname' => 'required|string|min:2|max:50',
+            'pin' => ['required', 'digits:4'],
+        ]);
+
+        $nickname = mb_strtolower(trim($data['nickname']));
+        $player = DB::transaction(function () use ($nickname, $data) {
+            $player = Player::whereRaw('LOWER(nickname) = ?', [$nickname])->lockForUpdate()->first();
+            if (!$player) return null;
+
+            // One-time bridge for profiles created before PIN login existed.
+            if (!$player->login_pin_hash) {
+                $player->forceFill(['login_pin_hash' => Hash::make($data['pin'])])->save();
+                return $player;
+            }
+
+            return Hash::check($data['pin'], $player->login_pin_hash) ? $player : null;
+        });
+
+        if (!$player) {
+            return response()->json(['message' => 'Nickname or game PIN is incorrect.'], 422);
+        }
+
+        return response()->json([
+            'player_id' => $player->id,
+            'nickname' => $player->nickname,
+            'session_token' => $player->issueSessionToken(),
+            'message' => 'Welcome back!',
+        ]);
     }
 
     // ── Answer submission ─────────────────────────────────────────────────────

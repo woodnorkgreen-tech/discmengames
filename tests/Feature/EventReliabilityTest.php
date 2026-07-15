@@ -668,6 +668,7 @@ class EventReliabilityTest extends TestCase
         for ($i = 0; $i < 30; $i++) {
             $response = $this->postJson('/api/players', [
                 'nickname' => 'Guest '.$i,
+                'pin' => '2468',
                 'consent' => true,
             ])->assertCreated();
 
@@ -680,14 +681,59 @@ class EventReliabilityTest extends TestCase
 
     public function test_nicknames_are_unique_case_insensitively(): void
     {
-        $this->postJson('/api/players', ['nickname' => 'Kevin', 'consent' => true])->assertCreated();
+        $this->postJson('/api/players', ['nickname' => 'Kevin', 'pin' => '2468', 'consent' => true])->assertCreated();
 
-        $this->postJson('/api/players', ['nickname' => 'KEVIN', 'consent' => true])
+        $this->postJson('/api/players', ['nickname' => 'KEVIN', 'pin' => '2468', 'consent' => true])
             ->assertStatus(422);
-        $this->postJson('/api/players', ['nickname' => '  kevin  ', 'consent' => true])
+        $this->postJson('/api/players', ['nickname' => '  kevin  ', 'pin' => '2468', 'consent' => true])
             ->assertStatus(422);
 
         $this->assertSame(1, Player::count());
+    }
+
+    public function test_registered_player_can_login_with_nickname_and_pin(): void
+    {
+        $registration = $this->postJson('/api/players', [
+            'nickname' => 'Returning Fan',
+            'pin' => '2468',
+            'consent' => true,
+        ])->assertCreated();
+
+        $oldToken = $registration->json('session_token');
+        $login = $this->postJson('/api/players/login', [
+            'nickname' => ' returning fan ',
+            'pin' => '2468',
+        ])->assertOk()
+            ->assertJsonPath('nickname', 'Returning Fan');
+
+        $this->assertNotEmpty($login->json('session_token'));
+        $this->assertNotSame($oldToken, $login->json('session_token'));
+
+        $this->postJson('/api/players/login', [
+            'nickname' => 'Returning Fan',
+            'pin' => '1111',
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Nickname or game PIN is incorrect.');
+    }
+
+    public function test_legacy_player_can_claim_a_pin_once(): void
+    {
+        Player::create(['nickname' => 'Legacy Fan', 'consent' => true]);
+
+        $this->postJson('/api/players/login', [
+            'nickname' => 'Legacy Fan',
+            'pin' => '1357',
+        ])->assertOk()->assertJsonPath('nickname', 'Legacy Fan');
+
+        $this->postJson('/api/players/login', [
+            'nickname' => 'Legacy Fan',
+            'pin' => '9999',
+        ])->assertUnprocessable();
+
+        $this->postJson('/api/players/login', [
+            'nickname' => 'Legacy Fan',
+            'pin' => '1357',
+        ])->assertOk();
     }
 
     private function player(): array

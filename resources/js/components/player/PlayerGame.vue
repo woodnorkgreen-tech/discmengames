@@ -139,8 +139,9 @@ import OnIcon from '../brand/OnIcon.vue'
 
 const props = defineProps({ adminPreview: { type: Boolean, default: false } })
 const adminPreview = props.adminPreview
-const playerId       = ref(adminPreview ? 'preview' : sessionStorage.getItem('player_id'))
-const playerNickname = ref(adminPreview ? 'MC Preview' : (sessionStorage.getItem('player_nickname') ?? 'Player'))
+const storedPlayerValue = (key) => localStorage.getItem(key) ?? sessionStorage.getItem(key)
+const playerId       = ref(adminPreview ? 'preview' : storedPlayerValue('player_id'))
+const playerNickname = ref(adminPreview ? 'MC Preview' : (storedPlayerValue('player_nickname') ?? 'Player'))
 
 const { phase, question, playerCount, match, round, loading } = useEventState()
 
@@ -187,7 +188,10 @@ watch(phase, (currentPhase, previousPhase) => {
 })
 
 function signOut() {
-  sessionStorage.clear()
+  for (const key of ['player_id', 'player_nickname', 'player_session_token', 'player_score', 'prediction_submitted', 'last_prediction']) {
+    sessionStorage.removeItem(key)
+    localStorage.removeItem(key)
+  }
   window.location.href = '/'
 }
 </script>

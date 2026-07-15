@@ -9,6 +9,7 @@ Route::get('/state', [EventStateController::class, 'show']);
 
 // ── Player ────────────────────────────────────────────────────────────────────
 Route::post('/players', [PlayerApiController::class, 'store'])->middleware('throttle:register');
+Route::post('/players/login', [PlayerApiController::class, 'login'])->middleware('throttle:player-login');
 Route::post('/answers', [PlayerApiController::class, 'submitAnswer'])->middleware('throttle:per-player');
 Route::get('/answers/result', [PlayerApiController::class, 'answerResult'])->middleware('throttle:per-player');
 Route::post('/predictions', [PlayerApiController::class, 'submitPrediction'])->middleware('throttle:per-player');

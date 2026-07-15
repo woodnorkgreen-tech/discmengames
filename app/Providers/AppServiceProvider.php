@@ -32,5 +32,14 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(2000)->by('player-ip:'.$request->ip()),
             ];
         });
+
+        RateLimiter::for('player-login', function (Request $request) {
+            $nickname = mb_strtolower(trim((string) $request->input('nickname')));
+
+            return [
+                Limit::perMinute(8)->by('login-nick:'.($nickname ?: $request->ip())),
+                Limit::perMinute(300)->by('login-ip:'.$request->ip()),
+            ];
+        });
     }
 }

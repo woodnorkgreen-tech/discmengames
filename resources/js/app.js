@@ -12,7 +12,7 @@ if (token) {
     axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content')
 }
 axios.interceptors.request.use((config) => {
-    const playerToken = sessionStorage.getItem('player_session_token')
+    const playerToken = localStorage.getItem('player_session_token') ?? sessionStorage.getItem('player_session_token')
     if (playerToken) config.headers['X-Player-Token'] = playerToken
     return config
 })

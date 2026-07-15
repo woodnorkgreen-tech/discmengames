@@ -42,12 +42,46 @@
         Join the game <span aria-hidden="true">→</span>
       </button>
 
-      <button @click="goToPlay"
+      <button @click="view = 'login'"
         class="mt-5 text-white/50 text-xs sm:text-sm hover:text-white transition underline-offset-2 hover:underline pb-safe">
-        Already registered on this device? <span class="text-white font-semibold">Continue playing</span>
+        Already registered? <span class="text-white font-semibold">Sign in</span>
       </button>
     </main>
 
+  </div>
+
+  <!-- Returning players can restore their profile after closing the browser or changing device. -->
+  <div v-else-if="view === 'login'" class="event-surface min-h-dvh flex items-center justify-center p-4 sm:p-6 pt-safe pb-safe">
+    <div class="w-full max-w-md">
+      <button @click="view = 'landing'; errorMsg = ''" class="mb-5 flex items-center gap-1 text-sm text-gray-500 transition hover:text-gray-300">← Back</button>
+      <div class="mb-6 text-center">
+        <p class="brand-kicker mb-2">Returning player</p>
+        <h1 class="mb-1 text-2xl font-extrabold text-white sm:text-3xl">Welcome back</h1>
+        <p class="text-sm text-white/60 sm:text-base">Use the nickname and game PIN you registered with.</p>
+        <p class="mt-2 text-xs text-white/40">Older profile without a PIN? Enter a new 4-digit PIN once to secure it.</p>
+      </div>
+
+      <form @submit.prevent="login" class="glass-card space-y-5 rounded-2xl p-6 sm:p-8">
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-300">Nickname</label>
+          <input v-model="loginForm.nickname" type="text" minlength="2" maxlength="50" required autocomplete="username"
+            placeholder="Your event nickname" class="field-control px-4 py-3.5 text-base placeholder-white/30" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-300">4-digit game PIN</label>
+          <input v-model="loginForm.pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required autocomplete="current-password"
+            placeholder="••••" class="field-control px-4 py-3.5 text-center text-xl tracking-[.5em] placeholder-white/30" />
+        </div>
+        <p v-if="errorMsg" class="text-center text-sm text-mpesa">{{ errorMsg }}</p>
+        <button type="submit" :disabled="submitting"
+          class="w-full rounded-xl bg-safaricom py-4 text-base font-bold text-white transition hover:bg-safaricom-dark disabled:opacity-50">
+          {{ submitting ? 'Signing in…' : 'Sign in →' }}
+        </button>
+        <button type="button" @click="view = 'register'; errorMsg = ''" class="w-full text-sm text-gray-400 hover:text-white">
+          New player? Create a profile
+        </button>
+      </form>
+    </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
@@ -94,6 +128,14 @@
           </p>
         </div>
 
+        <div>
+          <label class="block text-sm sm:text-base font-medium text-gray-300 mb-1.5">Create a 4-digit game PIN *</label>
+          <input v-model="form.pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required
+            autocomplete="new-password" placeholder="••••"
+            class="field-control px-4 py-3.5 text-center text-xl tracking-[.5em] placeholder-white/30" />
+          <p class="mt-1.5 text-xs text-gray-500">Remember this PIN. It lets you return on this or another device.</p>
+        </div>
+
         <label class="flex items-start gap-3 cursor-pointer">
           <input v-model="form.has_visa_card" type="checkbox"
             class="mt-0.5 w-5 h-5 rounded accent-visa flex-shrink-0" />
@@ -118,7 +160,7 @@
         </button>
 
         <p class="text-center text-xs text-gray-500 leading-snug">
-          Keep this browser open during the event — your nickname and progress live on this device.
+          Your progress is saved. Use your nickname and PIN whenever you need to sign back in.
         </p>
       </form>
 
@@ -133,14 +175,16 @@ import axios from 'axios'
 import OnIcon from '../brand/OnIcon.vue'
 
 // ── State machine ─────────────────────────────────────────────────────────────
-const view = ref('landing')   // 'landing' | 'register'
+const view = ref('landing')   // 'landing' | 'register' | 'login'
 
 // ── Registration — nickname only, no personal data collected ─────────────────
 const form = reactive({
   nickname:      '',
+  pin:           '',
   has_visa_card: false,
   consent:       false,
 })
+const loginForm = reactive({ nickname: '', pin: '' })
 
 const registered = ref(false)
 const submitting  = ref(false)
@@ -152,9 +196,7 @@ async function submit() {
   errorMsg.value   = ''
   try {
     const { data } = await axios.post('/api/players', form)
-    sessionStorage.setItem('player_id', data.player_id)
-    sessionStorage.setItem('player_nickname', data.nickname)
-    sessionStorage.setItem('player_session_token', data.session_token)
+    persistPlayer(data)
     nickname.value   = data.nickname
     registered.value = true
   } catch (e) {
@@ -164,8 +206,37 @@ async function submit() {
   }
 }
 
+function persistPlayer(data) {
+  localStorage.setItem('player_id', data.player_id)
+  localStorage.setItem('player_nickname', data.nickname)
+  localStorage.setItem('player_session_token', data.session_token)
+  // Keep the current tab compatible with older code while localStorage provides persistence.
+  sessionStorage.setItem('player_id', data.player_id)
+  sessionStorage.setItem('player_nickname', data.nickname)
+  sessionStorage.setItem('player_session_token', data.session_token)
+}
+
+async function login() {
+  submitting.value = true
+  errorMsg.value = ''
+  try {
+    const { data } = await axios.post('/api/players/login', loginForm)
+    persistPlayer(data)
+    window.location.href = '/play'
+  } catch (e) {
+    errorMsg.value = e.response?.data?.message ?? 'Unable to sign in. Try again.'
+  } finally {
+    submitting.value = false
+  }
+}
+
 function goToPlay() {
-  window.location.href = '/play'
+  if (localStorage.getItem('player_session_token') || sessionStorage.getItem('player_session_token')) {
+    window.location.href = '/play'
+  } else {
+    errorMsg.value = 'Sign in to continue.'
+    view.value = 'login'
+  }
 }
 </script>
 

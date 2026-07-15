@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Player extends Model
 {
-    protected $hidden = ['session_token_hash'];
+    protected $hidden = ['session_token_hash', 'login_pin_hash'];
 
     protected $fillable = [
-        'phone', 'nickname', 'email', 'consent', 'has_visa_card', 'is_simulated',
+        'phone', 'nickname', 'email', 'consent', 'has_visa_card', 'is_simulated', 'login_pin_hash',
         'trivia_score', 'trivia_streak', 'trivia_correct_count',
         'trivia_double_correct', 'prediction_score',
     ];
