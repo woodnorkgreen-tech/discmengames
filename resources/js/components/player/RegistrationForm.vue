@@ -32,10 +32,6 @@
     <!-- Bottom padding reserves the lower portion for the fans in the bg image -->
     <main class="relative z-10 flex-1 flex flex-col items-center lg:items-start justify-center px-6 sm:px-10 lg:px-16 text-center lg:text-left hero-content">
 
-      <p class="brand-kicker mb-4 drop-shadow">
-        FIFA World Cup 2026™ · Semi-final watch party
-      </p>
-
       <h1 class="text-white font-black leading-[1.12] mb-5 max-w-3xl tracking-[-0.03em]"
         style="font-size: clamp(1.7rem, 4vw, 4rem); text-shadow: 0 3px 24px rgba(0,0,0,0.5)">
         Welcome to the FIFA World Cup 2026™<br />

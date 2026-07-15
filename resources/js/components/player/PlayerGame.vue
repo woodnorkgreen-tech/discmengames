@@ -1,5 +1,5 @@
 <template>
-  <div class="event-surface min-h-dvh text-white flex flex-col">
+  <div class="event-surface min-h-dvh text-white flex flex-col" :class="{ 'lobby-bg': phase === 'lobby' }">
 
     <!-- Not registered guard -->
     <div v-if="!playerId" class="flex-1 flex items-center justify-center p-6 text-center">
@@ -32,10 +32,27 @@
       <!-- ── Lobby / waiting ─────────────────────────────────────────────── -->
       <div v-else-if="phase === 'lobby'"
         class="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center pb-safe">
-        <div class="w-14 h-14 rounded-full border-4 border-white/10 border-t-safaricom-light animate-spin mb-6" aria-hidden="true"></div>
-        <h2 class="text-2xl sm:text-3xl font-bold text-safaricom-light mb-2">Hang tight, {{ playerNickname }}!</h2>
-        <p class="text-gray-400 text-base sm:text-lg">The game starts soon. Watch the big screen.</p>
-        <p class="mt-4 text-sm text-gray-600">{{ playerCount }} players joined</p>
+        <div class="lobby-card glass-card w-full max-w-sm rounded-3xl px-7 py-10 sm:px-10 sm:py-12">
+
+          <span class="inline-flex items-center gap-2 rounded-full bg-safaricom/15 border border-safaricom/30 px-3 py-1 mb-7">
+            <span class="h-1.5 w-1.5 rounded-full bg-safaricom-light animate-pulse" aria-hidden="true"></span>
+            <span class="brand-kicker">Event lobby</span>
+          </span>
+
+          <div class="relative w-20 h-20 mx-auto mb-7" aria-hidden="true">
+            <div class="absolute inset-0 rounded-full border-4 border-white/10"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-safaricom-light animate-spin"></div>
+            <span class="absolute inset-0 flex items-center justify-center text-3xl">⚽</span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2">Hang tight, {{ playerNickname }}!</h2>
+          <p class="text-gray-300 text-base sm:text-lg leading-relaxed">The game starts soon. Watch the big screen.</p>
+
+          <div class="mt-7 inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-4 py-2">
+            <span class="h-2 w-2 rounded-full bg-safaricom-light animate-pulse" aria-hidden="true"></span>
+            <span class="text-sm text-gray-300"><strong class="text-white font-bold">{{ playerCount }}</strong> players joined</span>
+          </div>
+        </div>
       </div>
 
       <!-- ── Predictions form ────────────────────────────────────────────── -->
@@ -169,3 +186,27 @@ function signOut() {
   window.location.href = '/'
 }
 </script>
+
+<style scoped>
+/* ── Lobby: lighter overlay so the stadium/fan photo actually reads ──────── */
+.lobby-bg {
+  background-image:
+    linear-gradient(180deg, rgba(2, 20, 11, .32) 0%, rgba(2, 20, 11, .16) 45%, rgba(2, 20, 11, .6) 100%),
+    url('/images/backgrounds/event-portrait.webp');
+}
+@media (min-width: 900px) {
+  .lobby-bg {
+    background-image:
+      linear-gradient(90deg, rgba(1, 18, 10, .58) 0%, rgba(1, 18, 10, .28) 48%, rgba(1, 18, 10, .1) 100%),
+      url('/images/backgrounds/event-landscape.webp');
+  }
+}
+
+.lobby-card {
+  animation: lobby-in .55s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes lobby-in {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+</style>
