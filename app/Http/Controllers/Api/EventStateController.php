@@ -44,7 +44,10 @@ class EventStateController extends Controller
             $q = Question::find($state->current_question_id);
             if ($q) {
                 $round['current'] = $roundQuestions->search(fn ($candidate) => $candidate->id === $q->id) + 1;
-                $canRevealAnswers = in_array($state->phase, ['trivia_reveal', 'trivia_complete']);
+                // Expiry is a server-authoritative lock. Reveal immediately when
+                // the timer reaches zero even if the MC has not clicked Close yet.
+                $hasExpired = $q->status === 'live' && $q->secondsRemaining() <= 0;
+                $canRevealAnswers = in_array($state->phase, ['trivia_reveal', 'trivia_complete']) || $hasExpired;
                 $question = [
                     'id'              => $q->id,
                     'order_index'     => $q->order_index,
@@ -60,7 +63,7 @@ class EventStateController extends Controller
                         ? $q->answers()->selectRaw('selected_option, COUNT(*) as total')
                             ->groupBy('selected_option')->pluck('total', 'selected_option')
                         : null,
-                    // correct_answer is NOT sent during 'live' — only during 'trivia_reveal'
+                    // Never expose the answer while submissions are still open.
                     'correct_answer'  => $canRevealAnswers
                         ? $q->correct_answer : null,
                 ];

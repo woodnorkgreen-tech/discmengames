@@ -64,7 +64,7 @@
 
       <!-- ── Trivia live ─────────────────────────────────────────────────── -->
       <TriviaQuestion
-        v-else-if="phase === 'trivia_live' && question"
+        v-else-if="phase === 'trivia_live' && question && !question.correct_answer"
         :question="question"
         :round="round"
         :player-id="playerId"
@@ -73,18 +73,30 @@
         @answered="onAnswered" />
 
       <!-- ── Trivia reveal ───────────────────────────────────────────────── -->
-      <div v-else-if="phase === 'trivia_reveal' && question"
+      <div v-else-if="['trivia_live', 'trivia_reveal'].includes(phase) && question?.correct_answer"
         class="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center pb-safe">
-        <div v-if="answerResultKnown" class="text-5xl sm:text-6xl mb-4" aria-hidden="true">{{ lastAnswerCorrect ? '✓' : '×' }}</div>
-        <p v-if="answerResultKnown && lastAnswerCorrect" class="text-safaricom-light text-xl sm:text-2xl font-bold">
-          Correct! +{{ lastPoints }} pts
-        </p>
-        <p v-else-if="answerResultKnown" class="text-mpesa text-xl sm:text-2xl font-bold">Incorrect</p>
-        <p v-else class="text-gray-300 text-xl sm:text-2xl font-bold">No answer recorded</p>
-        <p class="text-gray-400 mt-3 text-sm sm:text-base">
-          Correct answer: <strong class="text-white">{{ question.correct_answer }}</strong>
-        </p>
-        <p class="text-gray-500 mt-4 text-sm">Your score: <span class="text-white font-bold">{{ playerScore }}</span> pts</p>
+        <div v-if="answerResultLoading" class="text-gray-400 text-lg">Checking your answer…</div>
+        <div v-else class="glass-card w-full max-w-lg rounded-3xl p-6 sm:p-9">
+          <div v-if="answerResultKnown" class="text-5xl sm:text-6xl mb-3" aria-hidden="true">{{ lastAnswerCorrect ? '✓' : '×' }}</div>
+          <p v-if="answerResultKnown && lastAnswerCorrect" class="text-safaricom-light text-2xl sm:text-3xl font-black">Correct!</p>
+          <p v-else-if="answerResultKnown" class="text-mpesa text-2xl sm:text-3xl font-black">Incorrect</p>
+          <p v-else class="text-gray-300 text-xl sm:text-2xl font-bold">No answer recorded</p>
+
+          <div class="mt-6 space-y-3 text-left">
+            <div v-if="answerResultKnown" class="rounded-xl border px-4 py-3"
+              :class="lastAnswerCorrect ? 'border-safaricom-light/40 bg-safaricom/15' : 'border-mpesa/35 bg-mpesa/10'">
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Your choice</p>
+              <p class="mt-1 font-bold text-white">{{ lastSelectedAnswer }}</p>
+            </div>
+            <div class="rounded-xl border border-safaricom-light/40 bg-safaricom/15 px-4 py-3">
+              <p class="text-xs font-bold uppercase tracking-widest text-safaricom-light">Correct answer</p>
+              <p class="mt-1 font-black text-white">{{ question.correct_answer }}</p>
+            </div>
+          </div>
+
+          <p v-if="answerResultKnown" class="mt-5 font-bold" :class="lastPoints > 0 ? 'text-visa-gold' : 'text-gray-400'">+{{ lastPoints }} points</p>
+          <p class="mt-2 text-sm text-gray-500">Your score: <span class="font-bold text-white">{{ playerScore }}</span> pts</p>
+        </div>
       </div>
 
       <!-- ── Trivia complete ─────────────────────────────────────────────── -->
@@ -148,6 +160,8 @@ const { phase, question, playerCount, match, round, loading } = useEventState()
 const lastAnswerCorrect   = ref(false)
 const lastPoints          = ref(0)
 const answerResultKnown   = ref(false)
+const answerResultLoading = ref(false)
+const lastSelectedAnswer  = ref(null)
 const playerScore         = ref(parseInt(sessionStorage.getItem('player_score') ?? '0'))
 const showPredictionsClosedModal = ref(false)
 
@@ -162,23 +176,33 @@ function onAnswered({ isCorrect, pointsAwarded, totalScore }) {
 async function loadSavedAnswerResult() {
   if (adminPreview || !playerId.value || !question.value?.id) return
 
+  answerResultLoading.value = true
   try {
     const { data } = await axios.get('/api/answers/result', {
       params: { player_id: playerId.value, question_id: question.value.id },
     })
     answerResultKnown.value   = data.answered
+    lastSelectedAnswer.value  = data.selected_option ?? null
     lastAnswerCorrect.value   = data.is_correct ?? false
     lastPoints.value          = data.points_awarded ?? 0
     playerScore.value         = data.total_score ?? playerScore.value
     sessionStorage.setItem('player_score', playerScore.value)
   } catch {
     answerResultKnown.value = false
+  } finally {
+    answerResultLoading.value = false
   }
 }
 
-watch([phase, question], ([currentPhase]) => {
-  if (currentPhase === 'trivia_live') answerResultKnown.value = false
-  if (currentPhase === 'trivia_reveal') loadSavedAnswerResult()
+watch([phase, question], ([currentPhase, currentQuestion], [previousPhase, previousQuestion] = []) => {
+  const questionChanged = currentQuestion?.id !== previousQuestion?.id
+  if (currentPhase === 'trivia_live' && questionChanged) {
+    answerResultKnown.value = false
+    lastSelectedAnswer.value = null
+  }
+  if (currentQuestion?.correct_answer && (questionChanged || !previousQuestion?.correct_answer || currentPhase !== previousPhase)) {
+    loadSavedAnswerResult()
+  }
 }, { immediate: true })
 
 watch(phase, (currentPhase, previousPhase) => {

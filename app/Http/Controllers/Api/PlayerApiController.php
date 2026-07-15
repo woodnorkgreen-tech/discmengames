@@ -165,6 +165,7 @@ class PlayerApiController extends Controller
 
         return response()->json([
             'answered'       => true,
+            'selected_option'=> $answer->selected_option,
             'is_correct'     => $answer->is_correct,
             'points_awarded' => $answer->points_awarded,
             'total_score'    => $player->trivia_score,

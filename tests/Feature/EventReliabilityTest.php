@@ -638,6 +638,41 @@ class EventReliabilityTest extends TestCase
             ->assertJsonPath('leaderboard.0.prediction_score', 750);
     }
 
+    public function test_expired_countdown_locks_and_reveals_the_answer_without_mc_action(): void
+    {
+        [$player, $token] = $this->player();
+        $question = $this->liveQuestion([
+            'duration_seconds' => 10,
+            'activated_at' => now()->subSeconds(11),
+        ]);
+        Answer::create([
+            'player_id' => $player->id,
+            'question_id' => $question->id,
+            'selected_option' => 'Mombasa',
+            'is_correct' => false,
+            'points_awarded' => 0,
+            'response_time_ms' => 9000,
+        ]);
+
+        $this->getJson('/api/state')->assertOk()
+            ->assertJsonPath('phase', 'trivia_live')
+            ->assertJsonPath('question.seconds_remaining', 0)
+            ->assertJsonPath('question.correct_answer', 'Nairobi');
+
+        $this->withHeader('X-Player-Token', $token)
+            ->getJson("/api/answers/result?player_id={$player->id}&question_id={$question->id}")
+            ->assertOk()
+            ->assertJsonPath('selected_option', 'Mombasa')
+            ->assertJsonPath('is_correct', false);
+
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/answers', [
+            'player_id' => $player->id,
+            'question_id' => $question->id,
+            'selected_option' => 'Nairobi',
+            'response_time_ms' => 10000,
+        ])->assertUnprocessable();
+    }
+
     public function test_leaderboards_never_expose_phone_data(): void
     {
         [$player] = $this->player();
