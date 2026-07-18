@@ -839,10 +839,37 @@ class AdminApiController extends Controller
         return response()->json(['status' => 'skipped']);
     }
 
-    public function reopenQuestion(Question $question): JsonResponse
+    public function reopenQuestion(Question $question, ScoringService $scoring): JsonResponse
     {
-        // Reset to draft so admin can re-activate it as live
-        $question->update(['status' => 'draft', 'activated_at' => null]);
+        if ($question->status !== 'closed') {
+            return response()->json(['message' => 'Only a revealed (closed) question can be returned to draft.'], 422);
+        }
+
+        // A question belonging to a finished round cannot be resurrected without
+        // breaking the round's "completed" invariant.
+        $round = $question->trivia_round_id ? TriviaRound::find($question->trivia_round_id) : null;
+        if ($round && $round->status === 'completed') {
+            return response()->json(['message' => 'This round is already complete — reopen the round is not supported.'], 422);
+        }
+
+        DB::transaction(function () use ($question, $scoring) {
+            $hadAnswers = $question->answers()->exists();
+            $question->update(['status' => 'draft', 'activated_at' => null]);
+
+            // A draft question no longer scores; rebuild affected totals so its
+            // points and streak effects are removed until it is re-run.
+            if ($hadAnswers) {
+                $scoring->recalculateAllScoredPlayers();
+            }
+
+            // If the reopened question was the one on screen, drop back to a
+            // waiting state so no client renders a "draft" question mid-reveal.
+            $state = EventState::current();
+            if ($state->current_question_id === $question->id) {
+                EventState::setCurrent(['phase' => 'trivia_live', 'current_question_id' => null]);
+            }
+            EventAudit::record('question.reopened', $question, ['had_answers' => $hadAnswers]);
+        });
 
         return response()->json(['status' => 'draft']);
     }

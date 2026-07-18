@@ -1048,6 +1048,46 @@ class EventReliabilityTest extends TestCase
         $this->assertSame('skipped', $question->fresh()->status);
     }
 
+    public function test_reopening_a_closed_question_reverses_its_points(): void
+    {
+        [$player, $token] = $this->player();
+        $question = $this->liveQuestion();
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/answers', [
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Nairobi', 'response_time_ms' => 1000,
+        ])->assertOk();
+        $question->update(['status' => 'closed']);
+        $this->assertGreaterThan(0, $player->fresh()->trivia_score);
+
+        $this->withSession(['admin_logged_in' => true])
+            ->postJson("/api/admin/questions/{$question->id}/reopen")
+            ->assertOk()->assertJsonPath('status', 'draft');
+
+        $this->assertSame('draft', $question->fresh()->status);
+        $this->assertSame(0, $player->fresh()->trivia_score);
+        $this->assertDatabaseHas('event_audits', [
+            'action' => 'question.reopened',
+            'subject_id' => $question->id,
+        ]);
+    }
+
+    public function test_a_question_in_a_completed_round_cannot_be_reopened(): void
+    {
+        $round = TriviaRound::create([
+            'position' => 1, 'title' => 'Round One', 'category' => 'visa',
+            'intro_message' => 'Go', 'status' => 'completed',
+        ]);
+        $question = $this->liveQuestion([
+            'status' => 'closed', 'trivia_round_id' => $round->id, 'round_position' => 1,
+        ]);
+
+        $this->withSession(['admin_logged_in' => true])
+            ->postJson("/api/admin/questions/{$question->id}/reopen")
+            ->assertStatus(422);
+
+        $this->assertSame('closed', $question->fresh()->status);
+    }
+
     public function test_a_closed_question_cannot_be_reactivated_directly(): void
     {
         $question = $this->liveQuestion();
