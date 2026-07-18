@@ -47,11 +47,15 @@
 
           <div class="space-y-2 p-3">
             <div v-if="!round.questions.length" class="rounded-xl border border-dashed border-gray-300 px-3 py-7 text-center text-xs text-gray-400">Assign questions below.</div>
-            <div v-for="(question, index) in round.questions" :key="question.id" class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <div v-for="(question, index) in round.questions" :key="question.id" class="rounded-xl border p-3"
+              :class="question.status === 'live' ? 'border-green-400 bg-green-50 ring-1 ring-green-200' : 'border-gray-100 bg-gray-50'">
               <div class="flex items-start gap-2">
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-gray-500">{{ index + 1 }}</span>
                 <p class="min-w-0 flex-1 text-xs font-semibold leading-snug text-gray-700">{{ question.text }}</p>
                 <span v-if="question.is_double_points" title="Visa Power Question" class="shrink-0 text-sm">⚡</span>
+                <span v-if="round.status !== 'draft' && question.status === 'live'" class="shrink-0 rounded-full bg-green-600 px-2 py-0.5 text-[9px] font-black uppercase text-white">● Live</span>
+                <span v-else-if="round.status !== 'draft' && question.status === 'closed'" class="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase text-blue-700">Revealed</span>
+                <span v-else-if="round.status !== 'draft' && question.status === 'skipped'" class="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[9px] font-black uppercase text-gray-500">Skipped</span>
               </div>
               <div v-if="round.status === 'draft'" class="mt-2 flex flex-wrap gap-1 pl-8">
                 <button type="button" @click="move(round, index, -1)" :disabled="index === 0 || busy" class="rounded bg-white px-2 py-1 text-[10px] font-bold text-gray-500 disabled:opacity-30">↑</button>
@@ -71,8 +75,19 @@
 
             <button v-if="round.status === 'draft'" type="button" @click="startRound(round)" :disabled="busy || !round.ready"
               class="w-full rounded-xl bg-green-600 px-3 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-35">▶ Start round introduction</button>
-            <button v-else-if="round.status === 'live'" type="button" @click="completeRound(round)" :disabled="busy"
-              class="w-full rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-black text-white disabled:opacity-40">Complete round & show winner</button>
+
+            <!-- Live round: one contextual button steps through the questions -->
+            <template v-else-if="round.status === 'live'">
+              <div class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center text-[11px] font-bold text-gray-600">{{ stepLabel(round) }}</div>
+              <button v-if="liveQuestionOf(round)" type="button" @click="revealQuestion(round)" :disabled="busy"
+                class="w-full rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white disabled:opacity-40">■ Reveal the answer</button>
+              <button v-else-if="nextQuestionOf(round)" type="button" @click="showNextQuestion(round)" :disabled="busy"
+                class="w-full rounded-xl bg-green-600 px-3 py-2.5 text-xs font-black text-white disabled:opacity-40">▶ Show next question ({{ revealedCountOf(round) + 1 }} of {{ round.questions.length }})</button>
+              <button v-else type="button" @click="completeRound(round)" :disabled="busy"
+                class="w-full rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-black text-white disabled:opacity-40">🏆 Complete round &amp; show winner</button>
+              <button v-if="liveQuestionOf(round) || nextQuestionOf(round)" type="button" @click="skipInRound(round)" :disabled="busy"
+                class="w-full text-[10px] font-bold text-gray-400 transition hover:text-red-500">Skip this question</button>
+            </template>
           </div>
         </article>
       </div>
@@ -113,7 +128,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import axios from 'axios'
 
 const emit = defineEmits(['changed'])
@@ -140,7 +155,17 @@ const filteredUnassigned = computed(() => categoryFilter.value === 'all'
   ? unassigned.value
   : unassigned.value.filter(question => question.category === categoryFilter.value))
 
-onMounted(load)
+// While a round is live, refresh so the stepper button stays correct even when
+// a question auto-closes on its own timer. Editing is disabled during a live
+// round, so reloading here cannot clobber in-progress typing.
+let poll = null
+onMounted(() => {
+  load()
+  poll = setInterval(() => {
+    if (!busy.value && rounds.value.some(round => round.status === 'live')) load()
+  }, 2500)
+})
+onUnmounted(() => clearInterval(poll))
 
 function apply(data) {
   enabled.value = Boolean(data.enabled)
@@ -185,6 +210,30 @@ function makePowerQuestion(round, selected) {
 }
 function startRound(round) { run(() => axios.post(`/api/admin/rounds/${round.id}/start`), `Round ${round.position} introduction is live.`) }
 function completeRound(round) { run(() => axios.post(`/api/admin/rounds/${round.id}/complete`), `Round ${round.position} complete. Round standings are live.`) }
+
+// ── Live-round stepper: questions are ordered by round position ──────────────
+function liveQuestionOf(round) { return round.questions.find(question => question.status === 'live') ?? null }
+function nextQuestionOf(round) { return round.questions.find(question => question.status === 'draft') ?? null }
+function revealedCountOf(round) { return round.questions.filter(question => ['closed', 'skipped'].includes(question.status)).length }
+function stepLabel(round) {
+  if (liveQuestionOf(round)) return `Question ${revealedCountOf(round) + 1} of ${round.questions.length} is live on screen`
+  if (nextQuestionOf(round)) return `${revealedCountOf(round)} of ${round.questions.length} revealed — show the next one`
+  return 'All questions revealed — complete the round'
+}
+function showNextQuestion(round) {
+  const next = nextQuestionOf(round)
+  if (next) run(() => axios.post(`/api/admin/questions/${next.id}/activate`), `Question ${revealedCountOf(round) + 1} is live.`)
+}
+function revealQuestion(round) {
+  const live = liveQuestionOf(round)
+  if (live) run(() => axios.post(`/api/admin/questions/${live.id}/close`), 'Answer revealed.')
+}
+function skipInRound(round) {
+  const target = liveQuestionOf(round) ?? nextQuestionOf(round)
+  if (target && confirm('Skip this question? It will not be shown or scored in this round.')) {
+    run(() => axios.post(`/api/admin/questions/${target.id}/skip`), 'Question skipped.')
+  }
+}
 function categoryLabel(category) { return ({ visa: 'Visa', fifa_world_cup: 'Football', general_knowledge: 'General' })[category] ?? 'Mixed' }
 function formatDuration(seconds) { const minutes = Math.floor(seconds / 60); const rest = seconds % 60; return minutes ? `${minutes}m ${rest}s` : `${rest}s` }
 </script>
