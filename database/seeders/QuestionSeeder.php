@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Question;
+use App\Models\TriviaRound;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -12,7 +13,11 @@ class QuestionSeeder extends Seeder
     {
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
         Question::truncate();
+        TriviaRound::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        TriviaRound::createRecommended();
+        $roundIds = TriviaRound::orderBy('position')->pluck('id', 'position');
 
         $questions = [
             // General knowledge and football warm-up
@@ -45,22 +50,33 @@ class QuestionSeeder extends Seeder
             ['visa', 'What is the name of Visa\'s platform that helps businesses and customers move money quickly around the world?', ['Visa Direct', 'Visa Instant', 'Visa Flow', 'Visa Express'], 'Visa Direct', 30, true],
         ];
 
+        // Four questions per round. Everything else stays in the unassigned
+        // bank as a reviewed alternate instead of making the live show too long.
+        $assignments = [
+            16 => [1, 1], 17 => [1, 2], 18 => [1, 3], 19 => [1, 4],
+            8 => [2, 1], 9 => [2, 2], 10 => [2, 3], 11 => [2, 4],
+            0 => [3, 1], 5 => [3, 2], 6 => [3, 3], 15 => [3, 4],
+        ];
+
         foreach ($questions as $index => $question) {
             [$category, $text, $options, $answer, $duration, $doublePoints] = array_pad($question, 6, false);
+            [$roundNumber, $roundPosition] = $assignments[$index] ?? [null, null];
             Question::create([
                 'order_index' => $index + 1,
+                'trivia_round_id' => $roundNumber ? $roundIds[$roundNumber] : null,
+                'round_position' => $roundPosition,
                 'category' => $category,
                 'type' => count($options) === 2 ? 'true_false' : 'multiple_choice',
                 'text' => $text,
                 'options' => $options,
                 'correct_answer' => $answer,
                 'duration_seconds' => $duration,
-                'is_double_points' => $doublePoints ?? false,
+                'is_double_points' => $roundPosition === 4 ? true : ($doublePoints ?? false),
                 'status' => 'draft',
                 'activated_at' => null,
             ]);
         }
 
-        $this->command->info('Seeded '.count($questions).' Visa and football questions across 3 categories.');
+        $this->command->info('Seeded '.count($questions).' questions, 3 ready rounds, and an alternate question bank.');
     }
 }

@@ -231,6 +231,7 @@
 
       <!-- ── Question Bank ───────────────────────────────────────────────── -->
       <section v-show="adminSection === 'questions'" class="bg-white rounded-2xl shadow p-4 sm:p-5">
+        <RoundManager @changed="loadQuestions" />
         <div class="flex items-center justify-between mb-3 sm:mb-4">
           <h2 class="font-semibold text-gray-600 text-xs uppercase tracking-widest">Question Bank</h2>
           <button @click="openAddQuestion"
@@ -275,6 +276,9 @@
             <div class="flex items-center justify-between gap-2 pl-8">
               <!-- Badges -->
               <div class="flex items-center gap-1.5 flex-wrap">
+                <span v-if="q.trivia_round" class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black">
+                  R{{ q.trivia_round.position }} · Q{{ q.round_position }}
+                </span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
                   :class="categoryMeta[q.category]?.badgeClass ?? 'bg-gray-100 text-gray-500'">
                   {{ categoryMeta[q.category]?.short ?? q.category }}
@@ -449,6 +453,29 @@
           <div v-for="metric in testingMetrics" :key="metric.label" class="rounded-xl bg-gray-50 border border-gray-100 p-2.5 text-center">
             <p class="text-lg font-black text-gray-800">{{ metric.value }}</p><p class="text-[10px] text-gray-500">{{ metric.label }}</p>
           </div>
+        </div>
+
+        <div class="mb-4 overflow-hidden rounded-2xl border" :class="scoringRehearsal.passed === false ? 'border-red-300' : 'border-visa/20'">
+          <div class="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3">
+            <div>
+              <p class="text-sm font-black text-gray-800">Scoring rehearsal <span v-if="scoringRehearsal.version" class="text-xs text-gray-400">v{{ scoringRehearsal.version }}</span></p>
+              <p class="mt-0.5 text-xs text-gray-500">Read-only checks. No players, answers or predictions are changed.</p>
+            </div>
+            <button @click="runScoringRehearsal" :disabled="scoringRehearsal.loading"
+              class="shrink-0 rounded-xl bg-visa px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
+              {{ scoringRehearsal.loading ? 'Running…' : 'Run checks' }}
+            </button>
+          </div>
+          <div v-if="scoringRehearsal.checks.length" class="divide-y divide-gray-100">
+            <div v-for="check in scoringRehearsal.checks" :key="`${check.group}-${check.scenario}`" class="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-2.5 text-xs">
+              <div><span class="font-black text-gray-400">{{ check.group }}</span><p class="font-semibold text-gray-700">{{ check.scenario }}</p></div>
+              <div class="text-right text-gray-500"><span class="block text-[10px] uppercase">Expected</span><strong>{{ check.expected.toLocaleString() }}</strong></div>
+              <div class="min-w-16 rounded-lg px-2 py-1.5 text-right" :class="check.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'">
+                <span class="block text-[10px] uppercase">Actual</span><strong>{{ check.actual.toLocaleString() }} {{ check.passed ? '✓' : '✕' }}</strong>
+              </div>
+            </div>
+          </div>
+          <p v-if="scoringRehearsal.error" class="px-4 py-3 text-sm font-semibold text-red-600">{{ scoringRehearsal.error }}</p>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -767,6 +794,7 @@ import QRCode from 'qrcode'
 import { useEventState } from '../../composables/useEventState'
 import QuestionForm from './QuestionForm.vue'
 import PlayerReview from './PlayerReview.vue'
+import RoundManager from './RoundManager.vue'
 
 const { phase, question: stateQuestion, playerCount, predictionCount, fetchState } = useEventState()
 
@@ -901,6 +929,7 @@ const adjust = reactive({
   amount: 0, reason: '', applying: false, successMsg: '',
 })
 const testTools = reactive({ count: 25, includeAnswers: true, answerRate: 100, correctRate: 70, busy: false, removePlayers: false, confirmation: '', message: '', error: false })
+const scoringRehearsal = reactive({ loading: false, passed: null, version: '', checks: [], error: '' })
 const testingStatus = reactive({ players: 0, real_players: 0, simulated_players: 0, predictions: 0, answers: 0, questions: 0 })
 const normalizedResetConfirmation = computed(() => testTools.confirmation.trim().toUpperCase())
 const testingMetrics = computed(() => [
@@ -935,6 +964,21 @@ onMounted(() => {
 async function loadTestingStatus() {
   const { data } = await axios.get('/api/admin/testing/status')
   Object.assign(testingStatus, data)
+}
+
+async function runScoringRehearsal() {
+  scoringRehearsal.loading = true
+  scoringRehearsal.error = ''
+  try {
+    const { data } = await axios.get('/api/admin/testing/scoring-rehearsal')
+    Object.assign(scoringRehearsal, {
+      passed: data.passed, version: data.version, checks: data.checks ?? [],
+    })
+  } catch (e) {
+    scoringRehearsal.error = e.response?.data?.message ?? 'Could not run scoring checks.'
+  } finally {
+    scoringRehearsal.loading = false
+  }
 }
 
 async function refreshOperations() {

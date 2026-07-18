@@ -8,6 +8,19 @@
         <p class="mx-auto mt-1.5 max-w-md rounded-full border border-visa-gold/20 bg-visa-gold/10 px-3 py-1 text-[10px] font-semibold text-visa-gold sm:text-[11px]">
           Score predictions use 90 minutes + stoppage time. Extra time and penalties do not count.
         </p>
+        <details class="mx-auto mt-2 max-w-md rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-gray-300">
+          <summary class="cursor-pointer text-center font-black text-white">How prediction points work</summary>
+          <div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+            <span>Correct result</span><strong class="text-right text-visa-gold">+{{ predictionRules.outcome }}</strong>
+            <span>Exact score bonus</span><strong class="text-right text-visa-gold">+{{ predictionRules.exact_score_bonus }}</strong>
+            <span>Half-time result</span><strong class="text-right text-visa-gold">+{{ predictionRules.halftime }}</strong>
+            <span>First team</span><strong class="text-right text-visa-gold">+{{ predictionRules.first_team }}</strong>
+            <span>First goalscorer</span><strong class="text-right text-visa-gold">+{{ predictionRules.first_scorer }}</strong>
+            <span>No goalscorer (0–0)</span><strong class="text-right text-visa-gold">+{{ predictionRules.no_scorer }}</strong>
+            <span>Player of the Match</span><strong class="text-right text-visa-gold">+{{ predictionRules.potm }}</strong>
+          </div>
+          <p class="mt-2 text-center text-gray-500">Maximum {{ predictionRules.maximum.toLocaleString() }} points. Correct categories stack; equal totals share rank.</p>
+        </details>
       </header>
 
       <form @submit.prevent="submit" class="glass-card flex min-h-0 flex-col overflow-hidden rounded-2xl">
@@ -228,8 +241,13 @@ const props = defineProps({
   playerId: { type: [String, Number], required: true },
   match: { type: Object, required: true },
   readOnly: { type: Boolean, default: false },
+  scoringRules: { type: Object, default: null },
 })
 const emit = defineEmits(['submitted'])
+const predictionRules = computed(() => props.scoringRules?.prediction ?? {
+  outcome: 250, exact_score_bonus: 400, halftime: 200,
+  first_team: 150, first_scorer: 300, no_scorer: 150, potm: 200, maximum: 1500,
+})
 
 const step = ref(1)
 const stepTitles = ['Score & full-time result', 'First team to score', 'First goalscorer', 'Half-time result', 'Player of the Match', 'Review']

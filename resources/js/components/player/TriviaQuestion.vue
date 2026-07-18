@@ -5,8 +5,10 @@
     <div class="flex items-center justify-between mb-4 sm:mb-6">
       <div>
         <span v-if="round.total" class="block text-[11px] sm:text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
-          Round {{ round.current }} of {{ round.total }}
+          <template v-if="round.number">Round {{ round.number }} of {{ round.total }} · {{ round.title }}</template>
+          <template v-else>Question {{ questionProgress.current || round.current }} of {{ questionProgress.total || round.total }}</template>
         </span>
+        <span v-if="round.number && questionProgress.total" class="block text-[10px] font-bold uppercase tracking-widest text-white/40">Question {{ questionProgress.current }} of {{ questionProgress.total }}</span>
         <span v-if="question.is_double_points"
           class="bg-visa-gold text-black text-xs sm:text-sm font-bold px-3 py-1 rounded-full uppercase tracking-wide animate-pulse">
           2× POINTS
@@ -32,6 +34,16 @@
         </span>
       </div>
     </div>
+
+    <details class="mb-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
+      <summary class="cursor-pointer text-center font-black text-white">How points work</summary>
+      <p class="mt-2 text-center leading-relaxed">
+        Correct <strong class="text-visa-gold">+{{ triviaRules.correct }}</strong> ·
+        Speed up to <strong class="text-visa-gold">+{{ triviaRules.speed_max }}</strong> ·
+        Streak up to <strong class="text-visa-gold">+{{ triviaRules.streak_three_plus }}</strong>
+        <span v-if="question.is_double_points"> · then <strong class="text-visa-gold">×2</strong></span>
+      </p>
+    </details>
 
     <template v-if="timeLeft > 0">
       <!-- Question text — grows to fill available space, vertically centred -->
@@ -107,15 +119,21 @@ import PlayerModal from './PlayerModal.vue'
 const props = defineProps({
   question: { type: Object, required: true },
   round: { type: Object, default: () => ({ current: 0, total: 0 }) },
+  questionProgress: { type: Object, default: () => ({ current: 0, total: 0 }) },
   playerId: { type: [String, Number], required: true },
   readOnly: { type: Boolean, default: false },
+  scoringRules: { type: Object, default: null },
+  savedAnswer: { type: String, default: null },
 })
 
 const emit = defineEmits(['answered'])
+const triviaRules = computed(() => props.scoringRules?.trivia ?? {
+  correct: 1000, speed_max: 200, streak_three_plus: 200,
+})
 
 const labels        = ['A', 'B', 'C', 'D']
-const answered      = ref(false)
-const selected      = ref(null)
+const answered      = ref(Boolean(props.savedAnswer))
+const selected      = ref(props.savedAnswer)
 const isCorrect     = ref(false)
 const pointsAwarded = ref(0)
 const submissionError = ref('')
@@ -159,6 +177,12 @@ watch(
   },
 )
 
+watch(() => props.savedAnswer, (answer) => {
+  if (!answer) return
+  selected.value = answer
+  answered.value = true
+})
+
 function optionClass(option) {
   if (option === selected.value) {
     return 'bg-visa/25 border-visa-gold text-white ring-2 ring-visa-gold/30'
@@ -182,13 +206,7 @@ async function selectAnswer(option) {
       response_time_ms: responseMs,
     })
     answered.value = true
-    isCorrect.value     = data.is_correct
-    pointsAwarded.value = data.points_awarded
-    emit('answered', {
-      isCorrect:     data.is_correct,
-      pointsAwarded: data.points_awarded,
-      totalScore:    data.total_score,
-    })
+    emit('answered', { selectedOption: data.selected_option })
   } catch (e) {
     submissionError.value = e.response?.data?.message ?? 'We could not record that answer. Please check your connection.'
   } finally {

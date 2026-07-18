@@ -58,13 +58,13 @@
 
       <form @submit.prevent="login" class="glass-card space-y-5 rounded-2xl p-6 sm:p-8">
         <div>
-          <label class="mb-1.5 block text-sm font-medium text-gray-300">Nickname</label>
-          <input v-model="loginForm.nickname" type="text" minlength="2" maxlength="50" required autocomplete="username"
+          <label for="login-nickname" class="mb-1.5 block text-sm font-medium text-gray-300">Nickname</label>
+          <input id="login-nickname" v-model="loginForm.nickname" type="text" minlength="2" maxlength="50" required autocomplete="username"
             placeholder="Your event nickname" class="field-control px-4 py-3.5 text-base placeholder-white/30" />
         </div>
         <div>
-          <label class="mb-1.5 block text-sm font-medium text-gray-300">4-digit game PIN</label>
-          <input v-model="loginForm.pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required autocomplete="current-password"
+          <label for="login-pin" class="mb-1.5 block text-sm font-medium text-gray-300">4-digit game PIN</label>
+          <input id="login-pin" v-model="loginForm.pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required autocomplete="current-password"
             placeholder="••••" class="field-control px-4 py-3.5 text-center text-xl tracking-[.5em] placeholder-white/30" />
         </div>
         <p v-if="errorMsg" class="text-center text-sm text-red-400">{{ errorMsg }}</p>
@@ -113,8 +113,8 @@
       <form v-else @submit.prevent="submit" class="glass-card rounded-2xl p-6 sm:p-8 space-y-4 sm:space-y-5">
 
         <div>
-          <label class="block text-sm sm:text-base font-medium text-gray-300 mb-1.5">Nickname *</label>
-          <input v-model="form.nickname" type="text" maxlength="50" minlength="2" required
+          <label for="register-nickname" class="block text-sm sm:text-base font-medium text-gray-300 mb-1.5">Nickname *</label>
+          <input id="register-nickname" v-model="form.nickname" type="text" maxlength="50" minlength="2" required
             placeholder="What should we call you?"
             autocomplete="nickname" class="field-control px-4 py-3.5 text-base placeholder-white/30" />
           <p class="mt-1.5 text-xs text-gray-500">
@@ -124,8 +124,8 @@
         </div>
 
         <div>
-          <label class="block text-sm sm:text-base font-medium text-gray-300 mb-1.5">Create a 4-digit game PIN *</label>
-          <input v-model="form.pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required
+          <label for="register-pin" class="block text-sm sm:text-base font-medium text-gray-300 mb-1.5">Create a 4-digit game PIN *</label>
+          <input id="register-pin" v-model="form.pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required
             autocomplete="new-password" placeholder="••••"
             class="field-control px-4 py-3.5 text-center text-xl tracking-[.5em] placeholder-white/30" />
           <p class="mt-1.5 text-xs text-gray-500">Remember this PIN. It lets you return on this or another device.</p>

@@ -13,6 +13,8 @@
 auth.json
 npm-debug.log
 yarn-error.log
+/test-results
+/storage/playwright-report
 /.claude
 /.fleet
 /.idea

@@ -13,7 +13,7 @@ class Player extends Model
     protected $fillable = [
         'phone', 'nickname', 'email', 'consent', 'has_visa_card', 'is_simulated', 'login_pin_hash',
         'trivia_score', 'trivia_streak', 'trivia_correct_count',
-        'trivia_double_correct', 'prediction_score',
+        'trivia_double_correct', 'trivia_manual_adjustment', 'prediction_score',
     ];
 
     protected $casts = [

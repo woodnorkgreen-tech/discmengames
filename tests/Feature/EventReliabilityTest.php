@@ -11,8 +11,10 @@ use App\Models\Player;
 use App\Models\Prediction;
 use App\Models\Question;
 use App\Models\SportsTeam;
+use App\Models\TriviaRound;
 use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class EventReliabilityTest extends TestCase
@@ -31,8 +33,10 @@ class EventReliabilityTest extends TestCase
             'response_time_ms' => 1200,
         ]);
 
-        $response->assertOk()->assertJson(['is_correct' => true]);
-        $this->assertGreaterThan(0, $response->json('points_awarded'));
+        $response->assertOk()->assertJson(['selected_option' => 'Nairobi'])
+            ->assertJsonMissingPath('is_correct')
+            ->assertJsonMissingPath('points_awarded')
+            ->assertJsonMissingPath('total_score');
         $this->assertDatabaseHas('answers', [
             'player_id' => $player->id,
             'question_id' => $question->id,
@@ -51,11 +55,10 @@ class EventReliabilityTest extends TestCase
             'question_id' => $question->id,
             'selected_option' => 'Mombasa',
             'response_time_ms' => 1500,
-        ])->assertOk()->assertJson([
-            'is_correct' => false,
-            'points_awarded' => 0,
-            'total_score' => 0,
-        ]);
+        ])->assertOk()
+            ->assertJsonMissingPath('is_correct')
+            ->assertJsonMissingPath('points_awarded')
+            ->assertJsonMissingPath('total_score');
     }
 
     public function test_answer_can_be_changed_while_the_question_is_live(): void
@@ -79,10 +82,9 @@ class EventReliabilityTest extends TestCase
         ])->assertOk()->assertJson([
             'answer_updated' => true,
             'selected_option' => 'Mombasa',
-            'is_correct' => false,
-            'points_awarded' => 0,
-            'total_score' => 0,
-        ]);
+        ])->assertJsonMissingPath('is_correct')
+            ->assertJsonMissingPath('points_awarded')
+            ->assertJsonMissingPath('total_score');
 
         $this->assertSame(1, Answer::count());
         $this->assertDatabaseHas('answers', [
@@ -142,7 +144,8 @@ class EventReliabilityTest extends TestCase
 
         $answer = Answer::firstOrFail();
         $this->assertGreaterThanOrEqual(19000, $answer->response_time_ms);
-        $this->assertLessThan(1000, $answer->points_awarded);
+        $this->assertGreaterThanOrEqual(1000, $answer->points_awarded);
+        $this->assertLessThan(1100, $answer->points_awarded);
     }
 
     public function test_player_cannot_submit_with_another_or_missing_token(): void
@@ -240,7 +243,7 @@ class EventReliabilityTest extends TestCase
         $service = app(ScoringService::class);
         $this->assertSame(1, $service->scorePredictions($result));
         $firstScore = $player->fresh()->prediction_score;
-        $this->assertSame(1200, $firstScore);
+        $this->assertSame(1150, $firstScore);
 
         $this->assertSame(0, $service->scorePredictions($result));
         $this->assertSame($firstScore, $player->fresh()->prediction_score);
@@ -259,15 +262,15 @@ class EventReliabilityTest extends TestCase
         $service = app(ScoringService::class);
 
         $goalless = new MatchResult(['score_home' => 0, 'score_away' => 0, 'scorer' => null, 'potm' => null]);
-        $this->assertSame(700, $service->calculatePredictionScore($prediction, $goalless));
+        $this->assertSame(550, $service->calculatePredictionScore($prediction, $goalless));
 
         $scorerMissingDespiteGoals = new MatchResult(['score_home' => 1, 'score_away' => 1, 'scorer' => null, 'potm' => null]);
-        $this->assertSame(700, $service->calculatePredictionScore($prediction, $scorerMissingDespiteGoals));
+        $this->assertSame(650, $service->calculatePredictionScore($prediction, $scorerMissingDespiteGoals));
 
         $wrongOutcomeWithNoGoals = new MatchResult(['score_home' => 0, 'score_away' => 0, 'scorer' => null, 'potm' => null]);
         $prediction->score_home = 1;
         $prediction->score_away = 0;
-        $this->assertSame(500, $service->calculatePredictionScore($prediction, $wrongOutcomeWithNoGoals));
+        $this->assertSame(300, $service->calculatePredictionScore($prediction, $wrongOutcomeWithNoGoals));
     }
 
     public function test_correcting_the_match_result_rescores_predictions(): void
@@ -296,14 +299,14 @@ class EventReliabilityTest extends TestCase
         ])->assertOk();
         $this->assertSame(0, $player->fresh()->prediction_score);
 
-        // Corrected entry — exact 500 + FT 200 + first team 300 + HT 200 + POTM 200
+        // Corrected entry — exact 400 + FT 250 + first team 150 + scorer 300 + HT 200 + POTM 200
         $admin->postJson('/api/admin/match-result', [
             'score_home' => 1, 'score_away' => 2,
             'halftime_score_home' => 0, 'halftime_score_away' => 0,
             'first_scoring_team' => 'away', 'scorer' => 'Lionel Messi', 'potm' => 'Lionel Messi',
         ])->assertOk();
 
-        $this->assertSame(1600, $player->fresh()->prediction_score);
+        $this->assertSame(1500, $player->fresh()->prediction_score);
         $this->assertSame(1, MatchResult::count());
     }
 
@@ -596,6 +599,42 @@ class EventReliabilityTest extends TestCase
         $this->assertNotNull($realPlayer->fresh());
     }
 
+    public function test_scoring_rehearsal_is_protected_read_only_and_all_checks_pass(): void
+    {
+        [$player] = $this->player();
+        $before = [Player::count(), Answer::count(), Prediction::count(), MatchResult::count()];
+
+        $this->getJson('/api/admin/testing/scoring-rehearsal')->assertUnauthorized();
+        $response = $this->withSession(['admin_logged_in' => true])
+            ->getJson('/api/admin/testing/scoring-rehearsal')
+            ->assertOk()
+            ->assertJsonPath('version', '2026.1')
+            ->assertJsonPath('passed', true)
+            ->assertJsonCount(7, 'checks');
+
+        $this->assertTrue(collect($response->json('checks'))->every('passed'));
+        $this->assertSame($before, [Player::count(), Answer::count(), Prediction::count(), MatchResult::count()]);
+        $this->assertNotNull($player->fresh());
+    }
+
+    public function test_write_load_command_requires_confirmation_and_refuses_active_gameplay(): void
+    {
+        $this->assertSame(1, Artisan::call('event:write-load-test', ['--users' => 1]));
+
+        EventState::setCurrent(['phase' => 'predictions_open']);
+        [$player] = $this->player();
+        Prediction::create([
+            'player_id' => $player->id, 'score_home' => 1, 'score_away' => 0,
+            'first_scorer' => 'Home Player', 'potm' => 'Home Player',
+        ]);
+        $before = [Player::count(), Prediction::count(), EventState::current()->phase];
+
+        $this->assertSame(1, Artisan::call('event:write-load-test', [
+            '--users' => 1, '--confirm' => true,
+        ]));
+        $this->assertSame($before, [Player::count(), Prediction::count(), EventState::current()->phase]);
+    }
+
     public function test_main_screen_streams_safe_live_counts_reveal_distribution_and_correct_leaderboard(): void
     {
         [$player] = $this->player();
@@ -776,6 +815,297 @@ class EventReliabilityTest extends TestCase
             'nickname' => 'Legacy Fan',
             'pin' => '1357',
         ])->assertOk();
+    }
+
+    public function test_trivia_formula_has_grace_streak_caps_and_true_double_points(): void
+    {
+        $scoring = app(ScoringService::class);
+
+        $this->assertSame(1200, $scoring->calculateTriviaBreakdown(false, 0, 30000, 1)['total']);
+        $this->assertSame(1200, $scoring->calculateTriviaBreakdown(false, 1000, 30000, 1)['total']);
+        $this->assertSame(1300, $scoring->calculateTriviaBreakdown(false, 0, 30000, 2)['total']);
+        $this->assertSame(1400, $scoring->calculateTriviaBreakdown(false, 0, 30000, 3)['total']);
+        $this->assertSame(1400, $scoring->calculateTriviaBreakdown(false, 0, 30000, 8)['total']);
+        $this->assertSame(2800, $scoring->calculateTriviaBreakdown(true, 0, 30000, 3)['total']);
+        $this->assertSame(1000, $scoring->calculateTriviaBreakdown(false, 30000, 30000, 1)['total']);
+    }
+
+    public function test_missing_answer_breaks_a_trivia_streak(): void
+    {
+        [$player] = $this->player();
+        $questions = collect([1, 2, 3])->map(fn ($order) => Question::create([
+            'order_index' => $order, 'category' => 'visa', 'type' => 'multiple_choice',
+            'text' => "Question {$order}?", 'options' => ['Yes', 'No'], 'correct_answer' => 'Yes',
+            'duration_seconds' => 30, 'status' => 'closed',
+        ]));
+        foreach ([$questions[0], $questions[2]] as $question) {
+            Answer::create([
+                'player_id' => $player->id, 'question_id' => $question->id,
+                'selected_option' => 'Yes', 'is_correct' => true,
+                'response_time_ms' => 1000, 'points_awarded' => 0,
+            ]);
+        }
+
+        app(ScoringService::class)->recalculatePlayerTrivia($player);
+
+        $this->assertSame(1, $player->fresh()->trivia_streak);
+        $this->assertSame(1200, Answer::where('question_id', $questions[2]->id)->value('points_awarded'));
+    }
+
+    public function test_admin_can_enable_configure_and_run_three_round_mode(): void
+    {
+        $admin = $this->withSession(['admin_logged_in' => true]);
+        $admin->putJson('/api/admin/rounds/settings', ['enabled' => true])
+            ->assertOk()->assertJsonPath('enabled', true)->assertJsonCount(3, 'rounds');
+
+        $round = TriviaRound::orderBy('position')->firstOrFail();
+        $question = Question::create([
+            'order_index' => 1, 'category' => 'visa', 'type' => 'multiple_choice',
+            'text' => 'Visa round question?', 'options' => ['Yes', 'No'], 'correct_answer' => 'Yes',
+            'duration_seconds' => 30, 'is_double_points' => true, 'status' => 'draft',
+        ]);
+        $admin->putJson("/api/admin/questions/{$question->id}/round", ['round_id' => $round->id])
+            ->assertOk()->assertJsonPath('rounds.0.questions.0.id', $question->id);
+        $admin->postJson("/api/admin/rounds/{$round->id}/start")->assertOk();
+
+        $this->getJson('/api/state')->assertOk()
+            ->assertJsonPath('rounds_enabled', true)
+            ->assertJsonPath('round.number', 1)
+            ->assertJsonPath('round.title', 'Visa Smart Play')
+            ->assertJsonPath('round.status', 'live')
+            ->assertJsonPath('question', null)
+            ->assertJsonPath('question_progress.total', 1);
+
+        $admin->postJson("/api/admin/questions/{$question->id}/activate")->assertOk();
+        $this->getJson('/api/state')->assertOk()
+            ->assertJsonPath('question.id', $question->id)
+            ->assertJsonPath('question_progress.current', 1)
+            ->assertJsonPath('question_progress.total', 1);
+
+        $admin->postJson("/api/admin/questions/{$question->id}/close")->assertOk();
+        $admin->postJson("/api/admin/rounds/{$round->id}/complete")->assertOk();
+        $this->getJson('/api/state')->assertOk()
+            ->assertJsonPath('round.status', 'completed')
+            ->assertJsonPath('question', null);
+    }
+
+    public function test_streak_resets_between_rounds_and_round_standings_are_independent(): void
+    {
+        [$player] = $this->player();
+        TriviaRound::createRecommended();
+        $rounds = TriviaRound::orderBy('position')->take(2)->get();
+        EventState::setCurrent(['rounds_enabled' => true, 'current_round_id' => $rounds[1]->id]);
+
+        $questions = collect([
+            [$rounds[0]->id, 1], [$rounds[0]->id, 2], [$rounds[1]->id, 1],
+        ])->map(fn ($definition, $index) => Question::create([
+            'order_index' => $index + 1, 'trivia_round_id' => $definition[0], 'round_position' => $definition[1],
+            'category' => 'visa', 'type' => 'multiple_choice', 'text' => "Round question {$index}?",
+            'options' => ['Yes', 'No'], 'correct_answer' => 'Yes', 'duration_seconds' => 30, 'status' => 'closed',
+        ]));
+        foreach ($questions as $question) {
+            Answer::create([
+                'player_id' => $player->id, 'question_id' => $question->id,
+                'selected_option' => 'Yes', 'is_correct' => true,
+                'response_time_ms' => 1000, 'points_awarded' => 0,
+            ]);
+        }
+
+        $scoring = app(ScoringService::class);
+        $scoring->recalculatePlayerTrivia($player);
+
+        $this->assertSame(1300, Answer::where('question_id', $questions[1]->id)->value('points_awarded'));
+        $this->assertSame(1200, Answer::where('question_id', $questions[2]->id)->value('points_awarded'));
+        $this->assertSame(2500, $scoring->roundLeaderboard($rounds[0], 10)[0]['round_score']);
+        $this->assertSame(1200, $scoring->roundLeaderboard($rounds[1], 10)[0]['round_score']);
+    }
+
+    public function test_prediction_breakdown_reaches_exactly_fifteen_hundred_points(): void
+    {
+        [$player] = $this->player();
+        $prediction = new Prediction([
+            'player_id' => $player->id, 'score_home' => 2, 'score_away' => 1,
+            'fulltime_winner' => 'home', 'halftime_winner' => 'draw',
+            'first_scoring_team' => 'home', 'first_scorer' => 'Home Player', 'potm' => 'Away Player',
+        ]);
+        $result = new MatchResult([
+            'score_home' => 2, 'score_away' => 1,
+            'halftime_score_home' => 0, 'halftime_score_away' => 0,
+            'first_scoring_team' => 'home', 'scorer' => 'Home Player', 'potm' => 'Away Player',
+        ]);
+
+        $breakdown = app(ScoringService::class)->calculatePredictionBreakdown($prediction, $result);
+
+        $this->assertSame([
+            'outcome' => 250, 'exact_score_bonus' => 400, 'halftime' => 200,
+            'first_team' => 150, 'first_scorer' => 300, 'potm' => 200,
+        ], $breakdown);
+        $this->assertSame(1500, array_sum($breakdown));
+    }
+
+    public function test_live_answer_result_returns_selection_without_scoring_secrets(): void
+    {
+        [$player, $token] = $this->player();
+        $question = $this->liveQuestion();
+        Answer::create([
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Nairobi', 'is_correct' => true,
+            'response_time_ms' => 1000, 'points_awarded' => 1200,
+        ]);
+
+        $this->withHeader('X-Player-Token', $token)
+            ->getJson("/api/answers/result?player_id={$player->id}&question_id={$question->id}")
+            ->assertOk()
+            ->assertJson(['answered' => true, 'revealed' => false, 'selected_option' => 'Nairobi'])
+            ->assertJsonMissingPath('is_correct')
+            ->assertJsonMissingPath('points_awarded')
+            ->assertJsonMissingPath('total_score');
+    }
+
+    public function test_equal_scores_share_the_same_leaderboard_rank(): void
+    {
+        [$first] = $this->player();
+        $second = Player::create(['nickname' => 'Second Player', 'consent' => true]);
+        foreach ([$first, $second] as $player) {
+            $player->update(['trivia_score' => 1200, 'trivia_correct_count' => 1]);
+            Prediction::create([
+                'player_id' => $player->id, 'score_home' => 1, 'score_away' => 0,
+                'first_scorer' => 'Home Player', 'potm' => 'Home Player',
+                'prediction_score' => 650, 'resolved' => true,
+            ]);
+        }
+        $scoring = app(ScoringService::class);
+
+        $this->assertSame([1, 1], array_column($scoring->triviaLeaderboard(10), 'rank'));
+        $this->assertSame([1, 1], array_column($scoring->predictionLeaderboard(10), 'rank'));
+    }
+
+    public function test_live_standings_are_withheld_until_the_reveal(): void
+    {
+        [$player] = $this->player();
+        $question = $this->liveQuestion();
+        Answer::create([
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Nairobi', 'is_correct' => true,
+            'points_awarded' => 1000, 'response_time_ms' => 1000,
+        ]);
+        $player->update(['trivia_score' => 1000]);
+
+        // During a live question the leaderboard must be empty: a visible score
+        // move would let a player confirm a guess and change their answer.
+        $this->getJson('/api/state')->assertOk()->assertJsonPath('leaderboard', []);
+
+        // Once revealed, the standings return.
+        $question->update(['status' => 'closed']);
+        EventState::setCurrent(['phase' => 'trivia_reveal', 'current_question_id' => $question->id]);
+        $this->getJson('/api/state')->assertOk()
+            ->assertJsonPath('leaderboard.0.nickname', 'Test Player');
+    }
+
+    public function test_manual_score_adjustment_survives_answer_recalculation(): void
+    {
+        [$player, $token] = $this->player();
+        $question = $this->liveQuestion();
+
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/answers', [
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Nairobi', 'response_time_ms' => 1000,
+        ])->assertOk();
+        $base = $player->fresh()->trivia_score;
+        $this->assertGreaterThan(0, $base);
+
+        $this->withSession(['admin_logged_in' => true])
+            ->postJson("/api/admin/players/{$player->id}/adjust-score", [
+                'adjustment' => 500, 'reason' => 'Bonus for helping set up.',
+            ])->assertOk()->assertJsonPath('trivia_score', $base + 500);
+
+        // Changing the answer to a wrong one rebuilds the answer-derived total to
+        // zero, but the manual +500 must persist through the recalculation.
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/answers', [
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Mombasa', 'response_time_ms' => 2000,
+        ])->assertOk();
+
+        $this->assertSame(500, $player->fresh()->trivia_score);
+        $this->assertSame(500, $player->fresh()->trivia_manual_adjustment);
+    }
+
+    public function test_skipping_a_question_removes_its_points(): void
+    {
+        [$player, $token] = $this->player();
+        $question = $this->liveQuestion();
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/answers', [
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Nairobi', 'response_time_ms' => 1000,
+        ])->assertOk();
+        $this->assertGreaterThan(0, $player->fresh()->trivia_score);
+
+        $this->withSession(['admin_logged_in' => true])
+            ->postJson("/api/admin/questions/{$question->id}/skip")
+            ->assertOk()->assertJsonPath('status', 'skipped');
+
+        $this->assertSame(0, $player->fresh()->trivia_score);
+        $this->assertSame('skipped', $question->fresh()->status);
+    }
+
+    public function test_a_closed_question_cannot_be_reactivated_directly(): void
+    {
+        $question = $this->liveQuestion();
+        $question->update(['status' => 'closed']);
+
+        $this->withSession(['admin_logged_in' => true])
+            ->postJson("/api/admin/questions/{$question->id}/activate")
+            ->assertStatus(422);
+
+        $this->assertSame('closed', $question->fresh()->status);
+    }
+
+    public function test_editing_a_closed_question_answer_key_rescores(): void
+    {
+        [$player, $token] = $this->player();
+        $question = $this->liveQuestion();
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/answers', [
+            'player_id' => $player->id, 'question_id' => $question->id,
+            'selected_option' => 'Mombasa', 'response_time_ms' => 1000,
+        ])->assertOk();
+        $question->update(['status' => 'closed']);
+        $this->assertSame(0, $player->fresh()->trivia_score);
+
+        $this->withSession(['admin_logged_in' => true])
+            ->putJson("/api/admin/questions/{$question->id}", ['correct_answer' => 'Mombasa'])
+            ->assertOk();
+
+        $this->assertGreaterThan(0, $player->fresh()->trivia_score);
+        $this->assertTrue((bool) Answer::where('player_id', $player->id)
+            ->where('question_id', $question->id)->value('is_correct'));
+    }
+
+    public function test_predictions_are_blocked_after_the_result_is_final(): void
+    {
+        MatchConfig::current()->update([
+            'home_team' => 'Kenya', 'away_team' => 'Ghana',
+            'home_squad' => ['Home One'], 'away_squad' => ['Away One'],
+        ]);
+        MatchResult::create([
+            'score_home' => 1, 'score_away' => 0,
+            'halftime_score_home' => 0, 'halftime_score_away' => 0,
+            'first_scoring_team' => 'home', 'scorer' => 'Home One', 'resolved' => true,
+        ]);
+        [$player, $token] = $this->player();
+        EventState::setCurrent(['phase' => 'predictions_open']);
+
+        $this->withHeader('X-Player-Token', $token)->postJson('/api/predictions', [
+            'player_id' => $player->id, 'score_home' => 1, 'score_away' => 0,
+            'first_scoring_team' => 'home', 'first_scorer' => 'Home One',
+            'halftime_winner' => 'draw', 'potm' => 'Away One',
+        ])->assertStatus(422)->assertJsonFragment([
+            'message' => 'The match result is final — predictions are closed.',
+        ]);
+
+        // And the admin cannot reopen the window either.
+        $this->withSession(['admin_logged_in' => true])
+            ->postJson('/api/admin/phase', ['phase' => 'predictions_open'])
+            ->assertStatus(422);
     }
 
     private function player(): array

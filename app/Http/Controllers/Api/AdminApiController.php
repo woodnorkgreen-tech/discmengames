@@ -13,6 +13,7 @@ use App\Models\Prediction;
 use App\Models\Question;
 use App\Models\SportsPlayer;
 use App\Models\SportsTeam;
+use App\Models\TriviaRound;
 use App\Services\ScoringService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,11 +38,8 @@ class AdminApiController extends Controller
         $players = Player::query()
             ->withCount('answers')
             ->withExists('prediction')
-            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search) {
-                $query->where('nickname', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            }))
+            // Nickname is the sole identity — phone/email are no longer collected.
+            ->when($search !== '', fn ($query) => $query->where('nickname', 'like', "%{$search}%"))
             ->when($type === 'real', fn ($query) => $query->where('is_simulated', false))
             ->when($type === 'simulated', fn ($query) => $query->where('is_simulated', true))
             ->latest('id')
@@ -273,7 +271,62 @@ class AdminApiController extends Controller
             'simulated_players' => Player::where('is_simulated', true)->count(),
             'predictions' => Prediction::count(),
             'answers' => Answer::count(),
+            'results' => MatchResult::count(),
             'questions' => Question::count(),
+        ]);
+    }
+
+    /** Deterministic, read-only checks of the published scoring rules. */
+    public function scoringRehearsal(ScoringService $scoring): JsonResponse
+    {
+        $predictionResult = new MatchResult([
+            'score_home' => 2, 'score_away' => 1,
+            'halftime_score_home' => 0, 'halftime_score_away' => 0,
+            'first_scoring_team' => 'home', 'scorer' => 'Home Player', 'potm' => 'Away Player',
+        ]);
+        $perfect = new Prediction([
+            'score_home' => 2, 'score_away' => 1, 'fulltime_winner' => 'home',
+            'halftime_winner' => 'draw', 'first_scoring_team' => 'home',
+            'first_scorer' => 'Home Player', 'potm' => 'Away Player',
+        ]);
+        $outcomeOnly = new Prediction([
+            'score_home' => 3, 'score_away' => 1, 'fulltime_winner' => 'home',
+            'halftime_winner' => 'away', 'first_scoring_team' => 'away',
+            'first_scorer' => 'Different Player', 'potm' => 'Different Player',
+        ]);
+        $goallessResult = new MatchResult([
+            'score_home' => 0, 'score_away' => 0,
+            'halftime_score_home' => 0, 'halftime_score_away' => 0,
+            'first_scoring_team' => 'none', 'scorer' => null, 'potm' => 'Home Player',
+        ]);
+        $goalless = new Prediction([
+            'score_home' => 0, 'score_away' => 0, 'fulltime_winner' => 'draw',
+            'halftime_winner' => 'draw', 'first_scoring_team' => 'none',
+            'first_scorer' => 'No goal / N/A', 'potm' => 'Home Player',
+        ]);
+
+        $checks = [
+            ['group' => 'Trivia', 'scenario' => 'Fast correct answer', 'expected' => 1200,
+                'actual' => $scoring->calculateTriviaBreakdown(false, 500, 30000, 1)['total']],
+            ['group' => 'Trivia', 'scenario' => 'Three-answer streak', 'expected' => 1400,
+                'actual' => $scoring->calculateTriviaBreakdown(false, 500, 30000, 3)['total']],
+            ['group' => 'Trivia', 'scenario' => 'Double question + streak', 'expected' => 2800,
+                'actual' => $scoring->calculateTriviaBreakdown(true, 500, 30000, 3)['total']],
+            ['group' => 'Trivia', 'scenario' => 'Correct at the deadline', 'expected' => 1000,
+                'actual' => $scoring->calculateTriviaBreakdown(false, 30000, 30000, 1)['total']],
+            ['group' => 'Prediction', 'scenario' => 'Perfect prediction', 'expected' => 1500,
+                'actual' => $scoring->calculatePredictionScore($perfect, $predictionResult)],
+            ['group' => 'Prediction', 'scenario' => 'Correct outcome only', 'expected' => 250,
+                'actual' => $scoring->calculatePredictionScore($outcomeOnly, $predictionResult)],
+            ['group' => 'Prediction', 'scenario' => 'Perfect goalless prediction', 'expected' => 1350,
+                'actual' => $scoring->calculatePredictionScore($goalless, $goallessResult)],
+        ];
+        $checks = array_map(fn ($check) => $check + ['passed' => $check['actual'] === $check['expected']], $checks);
+
+        return response()->json([
+            'version' => $scoring->rules()['version'],
+            'passed' => collect($checks)->every('passed'),
+            'checks' => $checks,
         ]);
     }
 
@@ -328,8 +381,10 @@ class AdminApiController extends Controller
             EventState::setCurrent([
                 'phase' => 'lobby',
                 'current_question_id' => null,
+                'current_round_id' => null,
                 'show_phone_on_screen' => false,
             ]);
+            TriviaRound::query()->update(['status' => 'draft']);
 
             return $summary;
         });
@@ -420,10 +475,153 @@ class AdminApiController extends Controller
             'phase' => 'required|in:lobby,predictions_open,predictions_closed,trivia_complete,prediction_reveal',
         ]);
 
+        if ($data['phase'] === 'predictions_open') {
+            $result = MatchResult::current();
+            if ($result->exists && $result->resolved) {
+                return response()->json([
+                    'message' => 'Cannot reopen predictions after the match result is final.',
+                ], 422);
+            }
+        }
+
         EventState::setCurrent(['phase' => $data['phase']]);
         EventAudit::record('phase.changed', null, ['phase' => $data['phase']]);
 
         return response()->json(['phase' => $data['phase']]);
+    }
+
+    // ── Three-round trivia management ───────────────────────────────────────
+
+    public function showRounds(): JsonResponse
+    {
+        $state = EventState::current();
+        return response()->json([
+            'enabled' => (bool) $state->rounds_enabled,
+            'current_round_id' => $state->current_round_id,
+            'rounds' => TriviaRound::with('questions')->orderBy('position')->get()
+                ->map(fn (TriviaRound $round) => $this->roundPayload($round)),
+            'unassigned' => Question::whereNull('trivia_round_id')->orderBy('order_index')->orderBy('id')->get(),
+        ]);
+    }
+
+    public function updateRoundSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate(['enabled' => 'required|boolean']);
+        $state = EventState::current();
+
+        if ((bool) $state->rounds_enabled !== $data['enabled']
+            && (Answer::exists() || Question::where('status', 'live')->exists() || TriviaRound::where('status', 'live')->exists())) {
+            return response()->json(['message' => 'Round mode cannot be changed after trivia answers or a live question exist. Reset the event first.'], 422);
+        }
+
+        if ($data['enabled']) TriviaRound::createRecommended();
+        EventState::setCurrent([
+            'rounds_enabled' => $data['enabled'],
+            'current_round_id' => $data['enabled'] ? $state->current_round_id : null,
+        ]);
+
+        return $this->showRounds();
+    }
+
+    public function updateRound(Request $request, TriviaRound $round): JsonResponse
+    {
+        if ($round->status !== 'draft') {
+            return response()->json(['message' => 'A live or completed round cannot be edited.'], 422);
+        }
+        $data = $request->validate([
+            'title' => 'required|string|max:80',
+            'category' => 'nullable|in:general_knowledge,fifa_world_cup,visa',
+            'intro_message' => 'nullable|string|max:180',
+        ]);
+        $round->update($data);
+        return response()->json(['round' => $this->roundPayload($round->fresh())]);
+    }
+
+    public function assignQuestionToRound(Request $request, Question $question): JsonResponse
+    {
+        if ($question->status !== 'draft' || $question->answers()->exists()) {
+            return response()->json(['message' => 'Only unanswered draft questions can be reassigned.'], 422);
+        }
+        $data = $request->validate([
+            'round_id' => 'nullable|exists:trivia_rounds,id',
+            'position' => 'nullable|integer|min:1|max:100',
+        ]);
+        $roundId = $data['round_id'] ?? null;
+        if ($roundId && TriviaRound::findOrFail($roundId)->status !== 'draft') {
+            return response()->json(['message' => 'Questions cannot be added to a live or completed round.'], 422);
+        }
+
+        $question->update([
+            'trivia_round_id' => $roundId,
+            'round_position' => $roundId
+                ? ($data['position'] ?? ((int) Question::where('trivia_round_id', $roundId)->max('round_position') + 1))
+                : null,
+        ]);
+        if ($roundId) $this->normalizeRoundPositions((int) $roundId);
+
+        return $this->showRounds();
+    }
+
+    public function reorderRoundQuestions(Request $request, TriviaRound $round): JsonResponse
+    {
+        if ($round->status !== 'draft') {
+            return response()->json(['message' => 'A live or completed round cannot be reordered.'], 422);
+        }
+        $data = $request->validate([
+            'question_ids' => 'required|array|min:1',
+            'question_ids.*' => 'integer|distinct|exists:questions,id',
+        ]);
+        $expected = $round->questions()->pluck('id')->sort()->values()->all();
+        $received = collect($data['question_ids'])->sort()->values()->all();
+        if ($expected !== $received) {
+            return response()->json(['message' => 'The order must contain every question in this round exactly once.'], 422);
+        }
+        foreach ($data['question_ids'] as $index => $questionId) {
+            Question::whereKey($questionId)->update(['round_position' => $index + 1]);
+        }
+        return response()->json(['round' => $this->roundPayload($round->fresh())]);
+    }
+
+    public function startRound(TriviaRound $round): JsonResponse
+    {
+        $state = EventState::current();
+        if (!$state->rounds_enabled) return response()->json(['message' => 'Enable round mode first.'], 422);
+        if ($round->status !== 'draft') return response()->json(['message' => 'Only a draft round can be started.'], 422);
+        if (!$round->questions()->exists()) return response()->json(['message' => 'Assign at least one question before starting this round.'], 422);
+        $readiness = $this->roundPayload($round);
+        if (!$readiness['ready']) {
+            return response()->json(['message' => 'Round is not ready: '.implode('; ', $readiness['issues'])], 422);
+        }
+        if ($round->questions()->where('status', '!=', 'draft')->exists()) {
+            return response()->json(['message' => 'Every question in this round must be in draft status.'], 422);
+        }
+        if (TriviaRound::where('status', 'live')->where('id', '!=', $round->id)->exists()) {
+            return response()->json(['message' => 'Complete the current live round first.'], 422);
+        }
+
+        $round->update(['status' => 'live']);
+        EventState::setCurrent([
+            'phase' => 'trivia_live',
+            'current_round_id' => $round->id,
+            'current_question_id' => null,
+        ]);
+        return response()->json(['round' => $this->roundPayload($round->fresh())]);
+    }
+
+    public function completeRound(TriviaRound $round): JsonResponse
+    {
+        if ($round->status !== 'live') return response()->json(['message' => 'Only the live round can be completed.'], 422);
+        if ($round->questions()->whereIn('status', ['draft', 'live'])->exists()) {
+            return response()->json(['message' => 'Reveal or skip every question in this round before completing it.'], 422);
+        }
+
+        $round->update(['status' => 'completed']);
+        EventState::setCurrent([
+            'phase' => 'trivia_reveal',
+            'current_round_id' => $round->id,
+            'current_question_id' => null,
+        ]);
+        return response()->json(['round' => $this->roundPayload($round->fresh())]);
     }
 
     // ── Question management ───────────────────────────────────────────────────
@@ -431,7 +629,7 @@ class AdminApiController extends Controller
     public function listQuestions(): JsonResponse
     {
         return response()->json(
-            Question::orderBy('order_index')->get()
+            Question::with('triviaRound:id,position,title')->orderBy('order_index')->get()
         );
     }
 
@@ -439,6 +637,8 @@ class AdminApiController extends Controller
     {
         $data = $request->validate([
             'order_index'      => 'required|integer',
+            'trivia_round_id'  => 'nullable|exists:trivia_rounds,id',
+            'round_position'   => 'nullable|integer|min:1|max:100',
             'type'             => 'required|in:multiple_choice,true_false',
             'text'             => 'required|string',
             'category'         => 'required|in:general_knowledge,fifa_world_cup,visa',
@@ -452,13 +652,15 @@ class AdminApiController extends Controller
         return response()->json(Question::create($data), 201);
     }
 
-    public function updateQuestion(Request $request, Question $question): JsonResponse
+    public function updateQuestion(Request $request, Question $question, ScoringService $scoring): JsonResponse
     {
         if ($question->status === 'live') {
             return response()->json(['message' => 'Cannot edit a live question.'], 422);
         }
         $data = $request->validate([
             'order_index'      => 'integer',
+            'trivia_round_id'  => 'nullable|exists:trivia_rounds,id',
+            'round_position'   => 'nullable|integer|min:1|max:100',
             'category'         => 'in:general_knowledge,fifa_world_cup,visa',
             'type'             => 'in:multiple_choice,true_false',
             'text'             => 'string',
@@ -470,6 +672,13 @@ class AdminApiController extends Controller
         ]);
 
         $question->update($data);
+
+        // Editing a closed question (e.g. correcting the answer key) must flow
+        // through to scores, otherwise the change silently does nothing.
+        if ($question->status === 'closed' && $question->answers()->exists()) {
+            DB::transaction(fn () => $scoring->recalculateAllScoredPlayers());
+            Cache::forget('public-event-state-v3');
+        }
 
         return response()->json($question->fresh());
     }
@@ -510,12 +719,34 @@ class AdminApiController extends Controller
 
     public function activateQuestion(Request $request, Question $question): JsonResponse
     {
+        // Only a fresh draft may go live. A closed question has already been
+        // revealed on the big screen; re-activating it would replay a known
+        // answer with stale response times. Use "Return to draft" first if a
+        // deliberate re-run is intended.
+        if ($question->status !== 'draft') {
+            return response()->json([
+                'message' => 'Only a draft question can go live. Return it to draft first if you must re-run it.',
+            ], 422);
+        }
+
+        $state = EventState::current();
+        if ($state->rounds_enabled) {
+            if (!$question->trivia_round_id) {
+                return response()->json(['message' => 'Assign this question to a round before taking it live.'], 422);
+            }
+            if ((int) $state->current_round_id !== (int) $question->trivia_round_id
+                || $question->triviaRound?->status !== 'live') {
+                return response()->json(['message' => 'Start this question’s round before taking it live.'], 422);
+            }
+        }
+
         DB::transaction(function () use ($question) {
             Question::where('status', 'live')->where('id', '!=', $question->id)->update(['status' => 'closed']);
             $question->update(['status' => 'live', 'activated_at' => now()]);
             EventState::setCurrent([
                 'phase'               => 'trivia_live',
                 'current_question_id' => $question->id,
+                'current_round_id' => $question->trivia_round_id,
             ]);
             EventAudit::record('question.activated', $question, ['text' => $question->text]);
         });
@@ -541,7 +772,7 @@ class AdminApiController extends Controller
         return response()->json(['status' => 'closed']);
     }
 
-    public function invalidateQuestion(Request $request, Question $question): JsonResponse
+    public function invalidateQuestion(Request $request, Question $question, ScoringService $scoring): JsonResponse
     {
         if (EventAudit::where('action', 'question.invalidated')
             ->where('subject_type', Question::class)
@@ -554,27 +785,16 @@ class AdminApiController extends Controller
             'reason' => 'required|string|min:5|max:255',
         ]);
 
-        $summary = DB::transaction(function () use ($question, $data) {
+        $summary = DB::transaction(function () use ($question, $data, $scoring) {
             $answers = Answer::where('question_id', $question->id)->lockForUpdate()->get();
-            $pointsReversed = 0;
-
-            foreach ($answers->groupBy('player_id') as $playerId => $playerAnswers) {
-                $points = (int) $playerAnswers->sum('points_awarded');
-                $correct = $playerAnswers->where('is_correct', true)->count();
-                $doubleCorrect = $question->is_double_points ? $correct : 0;
-                $player = Player::lockForUpdate()->find($playerId);
-                if (!$player) continue;
-
-                $player->update([
-                    'trivia_score' => max(0, $player->trivia_score - $points),
-                    'trivia_correct_count' => max(0, $player->trivia_correct_count - $correct),
-                    'trivia_double_correct' => max(0, $player->trivia_double_correct - $doubleCorrect),
-                    'trivia_streak' => 0,
-                ]);
-                $pointsReversed += $points;
-            }
+            $pointsReversed = (int) $answers->sum('points_awarded');
 
             $question->update(['status' => 'skipped']);
+
+            // Recalculate every scored player: removing this question also restores
+            // streak continuity for players who had skipped it, not just answerers.
+            $scoring->recalculateAllScoredPlayers();
+
             $state = EventState::current();
             if ($state->current_question_id === $question->id) {
                 EventState::setCurrent(['phase' => 'trivia_live', 'current_question_id' => null]);
@@ -592,10 +812,29 @@ class AdminApiController extends Controller
         return response()->json($summary + ['status' => 'skipped']);
     }
 
-    public function skipQuestion(Question $question): JsonResponse
+    public function skipQuestion(Question $question, ScoringService $scoring): JsonResponse
     {
-        $question->update(['status' => 'skipped']);
-        EventState::setCurrent(['phase' => 'trivia_live', 'current_question_id' => null]);
+        if (!in_array($question->status, ['draft', 'live'], true)) {
+            return response()->json(['message' => 'Only a draft or live question can be skipped.'], 422);
+        }
+
+        DB::transaction(function () use ($question, $scoring) {
+            $hadAnswers = $question->answers()->exists();
+            $question->update(['status' => 'skipped']);
+
+            // A skipped question no longer scores; rebuild affected totals so its
+            // points and streak effects are removed cleanly.
+            if ($hadAnswers) {
+                $scoring->recalculateAllScoredPlayers();
+            }
+
+            // Only disturb the shared phase if this was the question on screen.
+            $state = EventState::current();
+            if ($state->current_question_id === $question->id) {
+                EventState::setCurrent(['phase' => 'trivia_live', 'current_question_id' => null]);
+            }
+            EventAudit::record('question.skipped', $question, ['had_answers' => $hadAnswers]);
+        });
 
         return response()->json(['status' => 'skipped']);
     }
@@ -687,7 +926,7 @@ class AdminApiController extends Controller
 
     // ── Manual score adjustment (with audit) ─────────────────────────────────
 
-    public function adjustScore(Request $request, Player $player): JsonResponse
+    public function adjustScore(Request $request, Player $player, ScoringService $scoring): JsonResponse
     {
         $data = $request->validate([
             'adjustment' => 'required|integer',
@@ -703,8 +942,14 @@ class AdminApiController extends Controller
         ]);
 
         $previousScore = $player->trivia_score;
-        $newScore = max(0, $previousScore + $data['adjustment']);
-        $player->update(['trivia_score' => $newScore]);
+        // Accumulate into the dedicated adjustment column and rebuild the total
+        // so the adjustment persists across future answer recalculations.
+        $newScore = DB::transaction(function () use ($player, $data, $scoring) {
+            $locked = Player::whereKey($player->id)->lockForUpdate()->firstOrFail();
+            $locked->update(['trivia_manual_adjustment' => $locked->trivia_manual_adjustment + $data['adjustment']]);
+            $scoring->recalculatePlayerTrivia($locked);
+            return $locked->fresh()->trivia_score;
+        });
         EventAudit::record('score.adjusted', $player, [
             'adjustment_requested' => $data['adjustment'],
             'previous_score' => $previousScore,
@@ -715,7 +960,44 @@ class AdminApiController extends Controller
         return response()->json([
             'id'           => $player->id,
             'nickname'     => $player->nickname,
-            'trivia_score' => $player->fresh()->trivia_score,
+            'trivia_score' => $newScore,
         ]);
+    }
+
+    private function roundPayload(TriviaRound $round): array
+    {
+        $round->loadMissing('questions');
+        $questions = $round->questions->sortBy('round_position')->values();
+        $issues = [];
+        if ($questions->isEmpty()) $issues[] = 'No questions assigned';
+        if ($questions->contains(fn ($question) => empty($question->correct_answer) || count($question->options ?? []) < 2)) {
+            $issues[] = 'A question is incomplete';
+        }
+        if ($round->category && $questions->contains(fn ($question) => $question->category !== $round->category)) {
+            $issues[] = 'A question does not match the round theme';
+        }
+        if ($questions->where('is_double_points', true)->count() === 0) $issues[] = 'No Visa Power Question selected';
+        if ($questions->where('is_double_points', true)->count() > 1) $issues[] = 'More than one Power Question';
+
+        return [
+            'id' => $round->id,
+            'position' => $round->position,
+            'title' => $round->title,
+            'category' => $round->category,
+            'intro_message' => $round->intro_message,
+            'status' => $round->status,
+            'ready' => $issues === [],
+            'issues' => $issues,
+            'estimated_seconds' => $questions->sum('duration_seconds'),
+            'questions' => $questions,
+        ];
+    }
+
+    private function normalizeRoundPositions(int $roundId): void
+    {
+        Question::where('trivia_round_id', $roundId)
+            ->orderByRaw('round_position IS NULL')
+            ->orderBy('round_position')->orderBy('order_index')->orderBy('id')
+            ->get()->each(fn (Question $question, int $index) => $question->update(['round_position' => $index + 1]));
     }
 }

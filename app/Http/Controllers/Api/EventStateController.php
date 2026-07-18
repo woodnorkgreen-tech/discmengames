@@ -9,6 +9,7 @@ use App\Models\Player;
 use App\Models\Prediction;
 use App\Models\Question;
 use App\Models\MatchConfig;
+use App\Models\TriviaRound;
 use App\Services\ScoringService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,8 @@ class EventStateController extends Controller
         $matchConfig = MatchConfig::current();
         $question = null;
         $round = ['current' => 0, 'total' => 0, 'completed' => 0];
+        $questionProgress = ['current' => 0, 'total' => 0, 'completed' => 0];
+        $currentTriviaRound = null;
 
         $roundQuestions = Question::where('status', '!=', 'skipped')
             ->orderBy('order_index')
@@ -40,14 +43,48 @@ class EventStateController extends Controller
         $round['total'] = $roundQuestions->count();
         $round['completed'] = $roundQuestions->where('status', 'closed')->count();
 
+        if ($state->rounds_enabled) {
+            $currentTriviaRound = $state->current_round_id ? TriviaRound::find($state->current_round_id) : null;
+            $allRounds = TriviaRound::orderBy('position')->get();
+            $round = $currentTriviaRound ? [
+                'id' => $currentTriviaRound->id,
+                'number' => $currentTriviaRound->position,
+                'title' => $currentTriviaRound->title,
+                'category' => $currentTriviaRound->category,
+                'intro_message' => $currentTriviaRound->intro_message,
+                'status' => $currentTriviaRound->status,
+                'total' => $allRounds->count(),
+                'completed' => $allRounds->where('status', 'completed')->count(),
+            ] : [
+                'id' => null, 'number' => 0, 'title' => null, 'category' => null,
+                'intro_message' => null, 'status' => 'waiting',
+                'total' => $allRounds->count(),
+                'completed' => $allRounds->where('status', 'completed')->count(),
+            ];
+
+            if ($currentTriviaRound) {
+                $questionsInRound = $currentTriviaRound->questions()->get(['id', 'status']);
+                $questionProgress['total'] = $questionsInRound->count();
+                $questionProgress['completed'] = $questionsInRound->whereIn('status', ['closed', 'skipped'])->count();
+            }
+        }
+
         if ($state->current_question_id) {
             $q = Question::find($state->current_question_id);
             if ($q) {
-                $round['current'] = $roundQuestions->search(fn ($candidate) => $candidate->id === $q->id) + 1;
+                if ($state->rounds_enabled && $currentTriviaRound) {
+                    $questionsInRound = $currentTriviaRound->questions()->get(['id', 'status']);
+                    $questionProgress['current'] = $questionsInRound->search(fn ($candidate) => $candidate->id === $q->id) + 1;
+                } else {
+                    $round['current'] = $roundQuestions->search(fn ($candidate) => $candidate->id === $q->id) + 1;
+                    $questionProgress = $round;
+                }
                 $canRevealAnswers = in_array($state->phase, ['trivia_reveal', 'trivia_complete']);
                 $question = [
                     'id'              => $q->id,
                     'order_index'     => $q->order_index,
+                    'round_position'  => $q->round_position,
+                    'category'        => $q->category,
                     'type'            => $q->type,
                     'text'            => $q->text,
                     'options'         => $q->options,
@@ -81,13 +118,25 @@ class EventStateController extends Controller
             'phase'               => $state->phase,
             'server_time'         => now()->toIso8601String(),
             'state_version'       => $state->updated_at?->getTimestampMs(),
+            'scoring_rules'       => $scoring->rules(),
             'round'               => $round,
+            'question_progress'   => $questionProgress,
+            'rounds_enabled'      => (bool) $state->rounds_enabled,
             'question'            => $question,
             'show_phone_on_screen'=> (bool) $state->show_phone_on_screen,
             // The main screen can scroll a deep field; do not cap it to a top ten.
-            'leaderboard'         => in_array($state->phase, ['match_ended', 'prediction_reveal'])
-                ? $scoring->predictionLeaderboard(100)
-                : $scoring->triviaLeaderboard(100),
+            // While a question is live the standings would leak answer correctness
+            // (a player could confirm a guess by watching their score move and then
+            // change their answer before the timer ends), so they are withheld until
+            // the reveal.
+            'leaderboard'         => match (true) {
+                in_array($state->phase, ['match_ended', 'prediction_reveal']) => $scoring->predictionLeaderboard(500),
+                $state->phase === 'trivia_live' => [],
+                default => $scoring->triviaLeaderboard(500),
+            },
+            'round_leaderboard'   => $state->rounds_enabled && $currentTriviaRound && $state->phase !== 'trivia_live'
+                ? $scoring->roundLeaderboard($currentTriviaRound, 500)
+                : [],
             'player_count'        => Player::count(),
             'prediction_count'    => Prediction::count(),
             'recent_predictions'  => $recentPredictions,

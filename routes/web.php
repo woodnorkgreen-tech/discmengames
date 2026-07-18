@@ -42,9 +42,17 @@ Route::middleware('admin.auth')->group(function () {
         Route::delete('/sports-players/{sportsPlayer}',     [AdminApiController::class, 'destroySportsPlayer']);
         Route::post('/testing/simulate',                    [AdminApiController::class, 'simulatePlayers']);
         Route::get('/testing/status',                       [AdminApiController::class, 'testingStatus']);
+        Route::get('/testing/scoring-rehearsal',            [AdminApiController::class, 'scoringRehearsal']);
         Route::delete('/testing/simulated-players',         [AdminApiController::class, 'clearSimulatedPlayers']);
         Route::post('/testing/reset-event',                 [AdminApiController::class, 'resetEvent']);
         Route::post('/phase',                              [AdminApiController::class, 'setPhase']);
+        Route::get('/rounds',                              [AdminApiController::class, 'showRounds']);
+        Route::put('/rounds/settings',                     [AdminApiController::class, 'updateRoundSettings']);
+        Route::put('/rounds/{round}',                      [AdminApiController::class, 'updateRound']);
+        Route::put('/rounds/{round}/questions/order',      [AdminApiController::class, 'reorderRoundQuestions']);
+        Route::post('/rounds/{round}/start',               [AdminApiController::class, 'startRound']);
+        Route::post('/rounds/{round}/complete',            [AdminApiController::class, 'completeRound']);
+        Route::put('/questions/{question}/round',          [AdminApiController::class, 'assignQuestionToRound']);
         Route::get('/questions',                           [AdminApiController::class, 'listQuestions']);
         Route::post('/questions',                          [AdminApiController::class, 'storeQuestion']);
         Route::put('/questions/{question}',                [AdminApiController::class, 'updateQuestion']);

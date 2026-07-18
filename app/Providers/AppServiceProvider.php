@@ -25,10 +25,17 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('per-player', function (Request $request) {
-            $playerId = (string) $request->input('player_id');
+            // Key the per-player bucket on the session token, not the body
+            // player_id: player ids are sequential and guessable, so keying on
+            // them would let anyone at the venue exhaust a victim's quota and
+            // lock them out of answering. The token is a secret only the real
+            // player holds; tokenless (unauthenticated) traffic falls back to the
+            // shared-IP bucket.
+            $token = (string) $request->header('X-Player-Token', '');
+            $key = $token !== '' ? hash('sha256', $token) : $request->ip();
 
             return [
-                Limit::perMinute(60)->by('player:'.($playerId !== '' ? $playerId : $request->ip())),
+                Limit::perMinute(60)->by('player:'.$key),
                 Limit::perMinute(2000)->by('player-ip:'.$request->ip()),
             ];
         });

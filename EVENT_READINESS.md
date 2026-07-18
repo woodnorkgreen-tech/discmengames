@@ -12,6 +12,16 @@ This document separates what is safe today from work that should be completed be
 6. Wait for the timer to reach zero, close the question, discuss the reveal, then activate the next question.
 7. Resolve the match result before revealing the prediction champion.
 
+### Three-round trivia mode
+
+Round mode is optional and the original flat question flow remains available. When enabled in **Admin → Questions → Trivia Round Manager**, the default structure is:
+
+1. **Visa Smart Play** — four Visa questions.
+2. **Football IQ** — four football questions.
+3. **Visa Final Whistle** — four mixed Visa and football questions.
+
+Each round must have exactly one clearly marked Visa Power Question before it can start. Start the round introduction first, then take its assigned questions live in order. Reveal or skip every assigned question before selecting **Complete round & show winner**. Streaks reset between rounds; round points still add directly to the overall trivia total, and equal results share rank.
+
 Never reset the event, force-edit squads, invalidate a question, or restart a live timer without the MC and technical operator agreeing verbally.
 
 ### Knockout-match scoring rule
@@ -107,3 +117,35 @@ The predicted score and correct-outcome points use the score after **90 minutes 
 ## Go/no-go rule
 
 Do not go live until a rehearsal at twice expected users completes without 500 responses, incorrect scoring, timer disagreement greater than two seconds, or an unrecoverable operator action.
+
+### Automated polling load test
+
+Run this against a non-production event environment while DDEV is available:
+
+```bash
+npm run load:test -- --attendance=100 --duration=30
+```
+
+The harness automatically uses twice the stated attendance (`200` users above). Each virtual player polls `/api/state` at the real 1.5-second client interval, while one simulated main screen polls `/api/predictions/feed` every three seconds. It does not create or change gameplay data. The go/no-go thresholds are no more than 1% errors, p95 at or below 750 ms, and p99 at or below 1,500 ms.
+
+Override the target or thresholds when needed:
+
+```bash
+LOAD_TEST_URL=http://mpesa-visa.ddev.site npm run load:test -- --users=300 --duration=60 --p95-ms=750 --p99-ms=1500
+```
+
+### Authenticated write load test
+
+Run only in an empty local/test lobby after both squads are configured. The command refuses production and active gameplay, creates temporary simulated players, submits predictions and trivia answers through the real authenticated APIs, verifies scoring, and cleans up its data:
+
+```bash
+ddev artisan event:write-load-test --users=200 --confirm
+```
+
+### Browser lifecycle rehearsal
+
+Run only against an empty local/test event. This drives the rendered admin, mobile-player, and main-screen views through registration, predictions, trivia countdown and answer, automatic reveal, match resolution, and the final leaderboard. It restores the lobby, original question timer, and temporary rehearsal player afterward.
+
+```bash
+npm run test:e2e
+```

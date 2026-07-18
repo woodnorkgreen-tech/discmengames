@@ -10,11 +10,12 @@ class EventState extends Model
     protected $table = 'event_state';
 
     protected $fillable = [
-        'phase', 'current_question_id', 'show_phone_on_screen',
+        'phase', 'current_question_id', 'rounds_enabled', 'current_round_id', 'show_phone_on_screen',
     ];
 
     protected $casts = [
         'show_phone_on_screen' => 'boolean',
+        'rounds_enabled' => 'boolean',
     ];
 
     /** Always update row id=1 (single-row table). */
@@ -23,6 +24,8 @@ class EventState extends Model
         $state = self::firstOrCreate(['id' => 1], [
             'phase' => 'lobby',
             'current_question_id' => null,
+            'rounds_enabled' => false,
+            'current_round_id' => null,
             'show_phone_on_screen' => false,
         ]);
         $state->update($attributes);
@@ -35,6 +38,8 @@ class EventState extends Model
         $state = self::firstOrCreate(['id' => 1], [
             'phase' => 'lobby',
             'current_question_id' => null,
+            'rounds_enabled' => false,
+            'current_round_id' => null,
             'show_phone_on_screen' => false,
         ]);
 

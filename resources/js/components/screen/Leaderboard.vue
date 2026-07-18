@@ -147,7 +147,7 @@ const winner = computed(() => {
 })
 
 function entryKey(entry) { return entry.id ?? `${entry.nickname}-${entry.rank}` }
-function score(entry) { return Number(entry.trivia_score ?? entry.prediction_score ?? 0) }
+function score(entry) { return Number(entry.round_score ?? entry.trivia_score ?? entry.prediction_score ?? 0) }
 function medal(rank) { return ['🥇', '🥈', '🥉'][rank - 1] ?? rank }
 function podiumClass(rank) {
   if (rank === 1) return 'border-visa-gold/50 bg-gradient-to-b from-visa-gold/20 to-white/5 shadow-[0_0_35px_rgba(247,182,0,.12)]'

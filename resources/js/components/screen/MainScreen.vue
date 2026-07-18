@@ -106,6 +106,16 @@
     <!-- ══════════════════════════════════════════════════════════════════════
          TRIVIA LIVE
     ══════════════════════════════════════════════════════════════════════ -->
+    <template v-else-if="roundsEnabled && phase === 'trivia_live' && !question && round?.status === 'live'">
+      <div class="phase-enter flex-1 flex flex-col items-center justify-center px-10 text-center">
+        <p class="font-black uppercase tracking-[.3em] text-visa-gold" style="font-size: clamp(.9rem,1.5vw,1.7rem)">Round {{ round.number }} of {{ round.total }}</p>
+        <div class="my-7 flex h-28 w-28 items-center justify-center rounded-full border border-visa-gold/30 bg-visa/20 text-6xl lg:h-36 lg:w-36 lg:text-7xl">{{ round.number === 2 ? '⚽' : '⚡' }}</div>
+        <h2 class="font-black text-white" style="font-size: clamp(3rem,7vw,8rem)">{{ round.title }}</h2>
+        <p class="mt-5 max-w-4xl text-gray-300" style="font-size: clamp(1rem,2vw,2.4rem)">{{ round.intro_message }}</p>
+        <p class="mt-8 font-bold uppercase tracking-widest text-white/40" style="font-size: clamp(.8rem,1.2vw,1.3rem)">{{ questionProgress.total }} questions · One Visa Power Question</p>
+      </div>
+    </template>
+
     <template v-else-if="phase === 'trivia_live' && question">
       <div class="phase-enter flex-1 flex flex-col px-8 lg:px-16 pt-6 lg:pt-10 pb-4">
 
@@ -114,7 +124,8 @@
           <div class="flex items-center gap-4">
           <span class="rounded-full border border-white/10 bg-black/20 px-4 py-2 font-bold uppercase tracking-widest text-gray-300"
             style="font-size: clamp(0.65rem, 1.1vw, 1.1rem)">
-            Round {{ round.current }} / {{ round.total }}
+            <template v-if="roundsEnabled">Round {{ round.number }} / {{ round.total }} · {{ round.title }}</template>
+            <template v-else>Question {{ round.current }} / {{ round.total }}</template>
           </span>
           <span v-if="question.is_double_points"
             class="bg-visa-gold text-black font-black uppercase tracking-widest animate-pulse rounded-full px-5 py-2"
@@ -122,7 +133,7 @@
             ⚡ DOUBLE POINTS ⚡
           </span>
           <span v-else class="text-gray-700" style="font-size: clamp(0.75rem, 1.2vw, 1.2rem)">
-            Question {{ question.order_index }}
+            Question {{ questionProgress.current || question.order_index }} / {{ questionProgress.total || round.total }}
           </span>
           </div>
 
@@ -225,6 +236,21 @@
       </div>
     </template>
 
+    <template v-else-if="roundsEnabled && phase === 'trivia_reveal' && !question && round?.status === 'completed'">
+      <div class="phase-enter flex-1 flex flex-col px-8 lg:px-16 pt-6 lg:pt-8 pb-4 overflow-hidden">
+        <div class="mb-4 flex shrink-0 items-end justify-between gap-5">
+          <div>
+            <p class="font-black uppercase tracking-[.22em] text-visa-gold" style="font-size: clamp(.7rem,1.1vw,1.1rem)">Round {{ round.number }} champion</p>
+            <h2 class="mt-1 font-black text-white" style="font-size: clamp(1.7rem,3vw,3.8rem)">{{ round.title }}</h2>
+          </div>
+          <p class="text-right text-gray-400" style="font-size: clamp(.7rem,1vw,1rem)">Round points contribute to the overall trivia total</p>
+        </div>
+        <div class="min-h-0 flex-1">
+          <Leaderboard :entries="roundLeaderboard" :title="`${round.title} standings`" />
+        </div>
+      </div>
+    </template>
+
     <!-- ══════════════════════════════════════════════════════════════════════
          TRIVIA COMPLETE
     ══════════════════════════════════════════════════════════════════════ -->
@@ -296,7 +322,7 @@ import { useEventState } from '../../composables/useEventState'
 import Leaderboard from './Leaderboard.vue'
 import LiveLeaderboardStrip from './LiveLeaderboardStrip.vue'
 
-const { phase, question, leaderboard, playerCount, predictionCount, recentPredictions, match, round, error } = useEventState(1500)
+const { phase, question, leaderboard, roundLeaderboard, playerCount, predictionCount, recentPredictions, match, round, questionProgress, roundsEnabled, error } = useEventState(1500)
 
 // ── QR Code — size scales with viewport, capped for readability ───────────────
 const qrCanvas = ref(null)

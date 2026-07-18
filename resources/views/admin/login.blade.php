@@ -28,14 +28,14 @@
       @csrf
 
       <div>
-        <label class="block text-sm font-medium text-gray-300 mb-1">Username</label>
-        <input type="text" name="username" value="{{ old('username') }}" required autofocus
+        <label for="admin-username" class="block text-sm font-medium text-gray-300 mb-1">Username</label>
+        <input id="admin-username" type="text" name="username" value="{{ old('username') }}" required autofocus
           class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-visa-gold" />
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-300 mb-1">Password</label>
-        <input type="password" name="password" required
+        <label for="admin-password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+        <input id="admin-password" type="password" name="password" required
           class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-visa-gold" />
       </div>
 

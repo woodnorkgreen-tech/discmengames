@@ -8,6 +8,7 @@ use App\Models\Player;
 use App\Models\Prediction;
 use App\Models\Question;
 use App\Models\MatchConfig;
+use App\Models\MatchResult;
 use App\Services\ScoringService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -135,15 +136,12 @@ class PlayerApiController extends Controller
         return response()->json([
             'answer_updated' => (bool) $existing,
             'selected_option'=> $data['selected_option'],
-            'is_correct'    => $data['selected_option'] === $question->correct_answer,
-            'points_awarded'=> $points,
-            'total_score'   => $player->fresh()->trivia_score,
             'message'       => $existing ? 'Answer updated. You can change it again while the timer is running.' : 'Answer saved. You can change it while the timer is running.',
         ]);
     }
 
     /** Return the authoritative saved result used by the player's reveal UI. */
-    public function answerResult(Request $request): JsonResponse
+    public function answerResult(Request $request, ScoringService $scoring): JsonResponse
     {
         $data = $request->validate([
             'player_id'   => 'required|exists:players,id',
@@ -152,23 +150,37 @@ class PlayerApiController extends Controller
 
         $player = Player::findOrFail($data['player_id']);
         $this->assertPlayerSession($request, $player);
+        $question = Question::findOrFail($data['question_id']);
         $answer = $player->answers()
             ->where('question_id', $data['question_id'])
             ->first();
 
+        $revealed = $question->status === 'closed'
+            || ($question->status === 'live' && $question->secondsRemaining() <= 0);
+
         if (!$answer) {
             return response()->json([
                 'answered'    => false,
-                'total_score' => $player->trivia_score,
+                'revealed' => $revealed,
+            ]);
+        }
+
+        if (!$revealed) {
+            return response()->json([
+                'answered' => true,
+                'revealed' => false,
+                'selected_option' => $answer->selected_option,
             ]);
         }
 
         return response()->json([
             'answered'       => true,
+            'revealed'       => true,
             'selected_option'=> $answer->selected_option,
             'is_correct'     => $answer->is_correct,
             'points_awarded' => $answer->points_awarded,
             'total_score'    => $player->trivia_score,
+            'breakdown'      => $scoring->triviaBreakdownForAnswer($answer),
         ]);
     }
 
@@ -220,6 +232,13 @@ class PlayerApiController extends Controller
             return response()->json(['message' => 'Predictions are closed.'], 422);
         }
 
+        // Guard against a re-opened window after the result is known: a resolved
+        // result means the final score is public, so no new predictions.
+        $result = MatchResult::current();
+        if ($result->exists && $result->resolved) {
+            return response()->json(['message' => 'The match result is final — predictions are closed.'], 422);
+        }
+
         $player = Player::findOrFail($data['player_id']);
         $this->assertPlayerSession($request, $player);
 
@@ -263,7 +282,7 @@ class PlayerApiController extends Controller
         return response()->json(['count' => count($entries), 'entries' => $entries]);
     }
 
-    public function currentPrediction(Request $request): JsonResponse
+    public function currentPrediction(Request $request, ScoringService $scoring): JsonResponse
     {
         $data = $request->validate([
             'player_id' => 'required|exists:players,id',
@@ -271,6 +290,11 @@ class PlayerApiController extends Controller
         $player = Player::findOrFail($data['player_id']);
         $this->assertPlayerSession($request, $player);
         $prediction = $player->prediction;
+
+        $result = MatchResult::current();
+        $breakdown = $prediction && $prediction->resolved && $result->exists && $result->resolved
+            ? $scoring->calculatePredictionBreakdown($prediction, $result)
+            : null;
 
         return response()->json([
             'prediction' => $prediction ? [
@@ -282,6 +306,9 @@ class PlayerApiController extends Controller
                 'fulltime_winner' => $prediction->fulltime_winner,
                 'potm' => $prediction->potm,
                 'updated_at' => $prediction->updated_at?->toIso8601String(),
+                'resolved' => $prediction->resolved,
+                'prediction_score' => $prediction->prediction_score,
+                'breakdown' => $breakdown,
             ] : null,
         ]);
     }

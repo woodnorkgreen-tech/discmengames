@@ -60,6 +60,7 @@
         v-else-if="phase === 'predictions_open'"
         :player-id="playerId"
         :match="match"
+        :scoring-rules="scoringRules"
         :read-only="adminPreview" />
 
       <!-- ── Trivia live ─────────────────────────────────────────────────── -->
@@ -67,10 +68,25 @@
         v-else-if="phase === 'trivia_live' && question && !question.correct_answer"
         :question="question"
         :round="round"
+        :question-progress="questionProgress"
         :player-id="playerId"
         :read-only="adminPreview"
+        :scoring-rules="scoringRules"
+        :saved-answer="lastSelectedAnswer"
         :key="question.id"
         @answered="onAnswered" />
+
+      <!-- Round introduction — no question timer is consumed here. -->
+      <div v-else-if="roundsEnabled && phase === 'trivia_live' && !question && round?.status === 'live'"
+        class="flex-1 flex items-center justify-center p-6 text-center pb-safe">
+        <div class="glass-card w-full max-w-lg rounded-3xl p-8 sm:p-11">
+          <p class="brand-kicker">Round {{ round.number }} of {{ round.total }}</p>
+          <div class="mx-auto my-6 flex h-20 w-20 items-center justify-center rounded-full border border-visa-gold/30 bg-visa/20 text-4xl">{{ round.number === 2 ? '⚽' : '⚡' }}</div>
+          <h2 class="text-3xl font-black text-white sm:text-4xl">{{ round.title }}</h2>
+          <p class="mt-4 text-base leading-relaxed text-gray-300">{{ round.intro_message }}</p>
+          <p class="mt-7 text-sm font-bold text-visa-gold">Watch the big screen. The first question is coming up.</p>
+        </div>
+      </div>
 
       <!-- ── Trivia reveal ───────────────────────────────────────────────── -->
       <div v-else-if="['trivia_live', 'trivia_reveal'].includes(phase) && question?.correct_answer"
@@ -95,7 +111,30 @@
           </div>
 
           <p v-if="answerResultKnown" class="mt-5 font-bold" :class="lastPoints > 0 ? 'text-visa-gold' : 'text-gray-400'">+{{ lastPoints }} points</p>
+          <div v-if="answerResultKnown && answerBreakdown" class="mt-4 grid grid-cols-2 gap-2 text-xs text-left">
+            <div class="rounded-lg bg-white/5 px-3 py-2"><span class="text-gray-500">Correct</span><strong class="float-right text-white">+{{ answerBreakdown.correct }}</strong></div>
+            <div class="rounded-lg bg-white/5 px-3 py-2"><span class="text-gray-500">Speed</span><strong class="float-right text-white">+{{ answerBreakdown.speed_bonus }}</strong></div>
+            <div class="rounded-lg bg-white/5 px-3 py-2"><span class="text-gray-500">Streak</span><strong class="float-right text-white">+{{ answerBreakdown.streak_bonus }}</strong></div>
+            <div class="rounded-lg bg-white/5 px-3 py-2"><span class="text-gray-500">Multiplier</span><strong class="float-right text-white">×{{ answerBreakdown.multiplier }}</strong></div>
+          </div>
           <p class="mt-2 text-sm text-gray-500">Your score: <span class="font-bold text-white">{{ playerScore }}</span> pts</p>
+          <p v-if="roundsEnabled && myRoundStanding" class="mt-1 text-sm text-gray-400">{{ round.title }}: <strong class="text-visa-gold">{{ myRoundStanding.round_score.toLocaleString() }} pts · #{{ myRoundStanding.rank }}</strong></p>
+        </div>
+      </div>
+
+      <!-- End-of-round celebration and independent award. -->
+      <div v-else-if="roundsEnabled && phase === 'trivia_reveal' && !question && round?.status === 'completed'"
+        class="flex-1 flex items-center justify-center p-6 text-center pb-safe">
+        <div class="glass-card w-full max-w-lg rounded-3xl p-7 sm:p-10">
+          <p class="brand-kicker">Round {{ round.number }} complete</p>
+          <div class="my-4 text-5xl">🏆</div>
+          <h2 class="text-2xl font-black text-white sm:text-3xl">{{ round.title }}</h2>
+          <template v-if="myRoundStanding">
+            <p class="mt-5 text-gray-400">Your round score</p>
+            <p class="text-4xl font-black text-visa-gold">{{ myRoundStanding.round_score.toLocaleString() }}</p>
+            <p class="mt-2 text-sm font-bold text-white">Round rank #{{ myRoundStanding.rank }}</p>
+          </template>
+          <p class="mt-6 text-sm text-gray-400">The round champion is on the big screen. Get ready for what comes next.</p>
         </div>
       </div>
 
@@ -117,7 +156,15 @@
         <img src="/images/brand/world-cup-trophy.png" alt="World Cup trophy"
           class="w-32 sm:w-40 max-h-52 object-contain mb-5 drop-shadow-2xl" />
         <h2 class="text-2xl sm:text-3xl font-bold text-visa-gold mb-2">Match Over!</h2>
-        <p class="text-gray-400 text-base">Watch the big screen for the Prediction Champion!</p>
+        <p v-if="predictionResultLoading" class="text-gray-400 text-base">Calculating your prediction…</p>
+        <div v-else-if="predictionResult?.breakdown" class="mt-4 w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+          <div v-for="item in predictionBreakdownRows" :key="item.key" class="flex items-center justify-between border-b border-white/5 py-2 last:border-0">
+            <span class="text-sm text-gray-300">{{ item.label }}</span>
+            <strong :class="item.points ? 'text-visa-gold' : 'text-gray-600'">{{ item.points ? `+${item.points}` : '—' }}</strong>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-lg"><strong>Total</strong><strong class="text-visa-gold">{{ predictionResult.prediction_score.toLocaleString() }} pts</strong></div>
+        </div>
+        <p class="mt-3 text-gray-400 text-base">Watch the big screen for the Prediction Champion!</p>
       </div>
 
       <!-- ── Fallback ────────────────────────────────────────────────────── -->
@@ -141,7 +188,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import { useEventState } from '../../composables/useEventState'
 import PredictionsForm from './PredictionsForm.vue'
@@ -155,22 +202,31 @@ const storedPlayerValue = (key) => localStorage.getItem(key) ?? sessionStorage.g
 const playerId       = ref(adminPreview ? 'preview' : storedPlayerValue('player_id'))
 const playerNickname = ref(adminPreview ? 'MC Preview' : (storedPlayerValue('player_nickname') ?? 'Player'))
 
-const { phase, question, playerCount, match, round, loading } = useEventState()
+const { phase, question, playerCount, match, round, questionProgress, roundsEnabled, roundLeaderboard, scoringRules, loading } = useEventState()
 
 const lastAnswerCorrect   = ref(false)
 const lastPoints          = ref(0)
 const answerResultKnown   = ref(false)
 const answerResultLoading = ref(false)
 const lastSelectedAnswer  = ref(null)
+const answerBreakdown     = ref(null)
 const playerScore         = ref(parseInt(sessionStorage.getItem('player_score') ?? '0'))
 const showPredictionsClosedModal = ref(false)
+const myRoundStanding = computed(() => roundLeaderboard.value.find(entry => String(entry.id) === String(playerId.value)) ?? null)
 
-function onAnswered({ isCorrect, pointsAwarded, totalScore }) {
-  answerResultKnown.value = true
-  lastAnswerCorrect.value = isCorrect
-  lastPoints.value        = pointsAwarded
-  playerScore.value       = totalScore
-  sessionStorage.setItem('player_score', totalScore)
+const predictionResult = ref(null)
+const predictionResultLoading = ref(false)
+const predictionBreakdownRows = computed(() => {
+  const values = predictionResult.value?.breakdown ?? {}
+  return [
+    ['outcome', 'Correct result'], ['exact_score_bonus', 'Exact score bonus'],
+    ['halftime', 'Half-time result'], ['first_team', 'First team to score'],
+    ['first_scorer', 'First goalscorer'], ['potm', 'Player of the Match'],
+  ].map(([key, label]) => ({ key, label, points: values[key] ?? 0 }))
+})
+
+function onAnswered({ selectedOption }) {
+  lastSelectedAnswer.value = selectedOption
 }
 
 async function loadSavedAnswerResult() {
@@ -185,6 +241,7 @@ async function loadSavedAnswerResult() {
     lastSelectedAnswer.value  = data.selected_option ?? null
     lastAnswerCorrect.value   = data.is_correct ?? false
     lastPoints.value          = data.points_awarded ?? 0
+    answerBreakdown.value     = data.breakdown ?? null
     playerScore.value         = data.total_score ?? playerScore.value
     sessionStorage.setItem('player_score', playerScore.value)
   } catch {
@@ -194,11 +251,34 @@ async function loadSavedAnswerResult() {
   }
 }
 
+async function loadSavedLiveAnswer() {
+  if (adminPreview || !playerId.value || !question.value?.id) return
+  try {
+    const { data } = await axios.get('/api/answers/result', {
+      params: { player_id: playerId.value, question_id: question.value.id },
+    })
+    if (!data.revealed) lastSelectedAnswer.value = data.selected_option ?? null
+  } catch {}
+}
+
+async function loadPredictionResult() {
+  if (adminPreview || !playerId.value) return
+  predictionResultLoading.value = true
+  try {
+    const { data } = await axios.get('/api/predictions/current', { params: { player_id: playerId.value } })
+    predictionResult.value = data.prediction
+  } finally {
+    predictionResultLoading.value = false
+  }
+}
+
 watch([phase, question], ([currentPhase, currentQuestion], [previousPhase, previousQuestion] = []) => {
   const questionChanged = currentQuestion?.id !== previousQuestion?.id
   if (currentPhase === 'trivia_live' && questionChanged) {
     answerResultKnown.value = false
     lastSelectedAnswer.value = null
+    answerBreakdown.value = null
+    loadSavedLiveAnswer()
   }
   if (currentQuestion?.correct_answer && (questionChanged || !previousQuestion?.correct_answer || currentPhase !== previousPhase)) {
     loadSavedAnswerResult()
@@ -210,6 +290,10 @@ watch(phase, (currentPhase, previousPhase) => {
     showPredictionsClosedModal.value = true
   }
 })
+
+watch(phase, currentPhase => {
+  if (['match_ended', 'prediction_reveal'].includes(currentPhase)) loadPredictionResult()
+}, { immediate: true })
 
 function signOut() {
   for (const key of ['player_id', 'player_nickname', 'player_session_token', 'player_score', 'prediction_submitted', 'last_prediction']) {
