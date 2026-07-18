@@ -188,8 +188,6 @@
           </div>
         </div>
 
-        <LiveLeaderboardStrip v-if="leaderboard.length" :entries="leaderboard" class="mt-4 flex-shrink-0" />
-
       </div>
     </template>
 
@@ -320,7 +318,6 @@ import QRCode from 'qrcode'
 import axios from 'axios'
 import { useEventState } from '../../composables/useEventState'
 import Leaderboard from './Leaderboard.vue'
-import LiveLeaderboardStrip from './LiveLeaderboardStrip.vue'
 
 const { phase, question, leaderboard, roundLeaderboard, playerCount, predictionCount, recentPredictions, match, round, questionProgress, roundsEnabled, error } = useEventState(1500)
 
