@@ -20,7 +20,6 @@ class Player extends Model
         'consent' => 'boolean',
         'has_visa_card' => 'boolean',
         'is_simulated' => 'boolean',
-        'show_phone_on_screen' => 'boolean',
     ];
 
     public function answers(): HasMany
@@ -31,16 +30,6 @@ class Player extends Model
     public function prediction(): HasOne
     {
         return $this->hasOne(Prediction::class);
-    }
-
-    /** Normalise phone: strip spaces, leading zeros → +254 */
-    public static function normalisePhone(string $phone): string
-    {
-        $phone = preg_replace('/\D/', '', $phone);
-        if (str_starts_with($phone, '0')) {
-            $phone = '254' . substr($phone, 1);
-        }
-        return $phone;
     }
 
     public function issueSessionToken(): string

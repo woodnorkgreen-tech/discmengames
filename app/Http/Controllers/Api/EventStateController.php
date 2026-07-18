@@ -12,7 +12,6 @@ use App\Models\MatchConfig;
 use App\Models\TriviaRound;
 use App\Services\ScoringService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -123,7 +122,6 @@ class EventStateController extends Controller
             'question_progress'   => $questionProgress,
             'rounds_enabled'      => (bool) $state->rounds_enabled,
             'question'            => $question,
-            'show_phone_on_screen'=> (bool) $state->show_phone_on_screen,
             // The main screen can scroll a deep field; do not cap it to a top ten.
             // While a question is live the standings would leak answer correctness
             // (a player could confirm a guess by watching their score move and then
@@ -179,22 +177,6 @@ class EventStateController extends Controller
 
             return $lockedState->fresh();
         });
-    }
-
-    public function togglePhone(Request $request): JsonResponse
-    {
-        $enabled = DB::transaction(function () {
-            EventState::current();
-            $state = EventState::whereKey(1)->lockForUpdate()->firstOrFail();
-            $enabled = !$state->show_phone_on_screen;
-            $state->update(['show_phone_on_screen' => $enabled]);
-            EventAudit::record('display.phone_suffix_toggled', $state, ['enabled' => $enabled]);
-            return $enabled;
-        });
-
-        Cache::forget('public-event-state-v3');
-
-        return response()->json(['show_phone_on_screen' => $enabled]);
     }
 
 }
