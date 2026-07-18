@@ -85,16 +85,27 @@
           </div>
           <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600">{{ unassigned.length }}</span>
         </div>
-        <div v-if="unassigned.length" class="grid gap-2 md:grid-cols-2">
-          <div v-for="question in unassigned" :key="question.id" class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
-            <div class="min-w-0 flex-1"><p class="truncate text-xs font-semibold text-gray-700">{{ question.text }}</p><p class="mt-1 text-[10px] uppercase text-gray-400">{{ categoryLabel(question.category) }}</p></div>
-            <select :value="''" @change="assign(question, Number($event.target.value)); $event.target.value = ''" :disabled="busy"
-              aria-label="Assign question to round" class="rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs font-bold text-gray-700">
-              <option value="">Assign…</option>
-              <option v-for="round in draftRounds" :key="round.id" :value="round.id">Round {{ round.position }}</option>
-            </select>
+        <template v-if="unassigned.length">
+          <!-- Category filter tabs for quick selection -->
+          <div class="mb-3 flex flex-wrap gap-2">
+            <button v-for="tab in categoryTabs" :key="tab.key" type="button" @click="categoryFilter = tab.key"
+              class="rounded-full px-3 py-1.5 text-xs font-bold transition"
+              :class="categoryFilter === tab.key ? 'bg-visa text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+              {{ tab.label }} ({{ countFor(tab.key) }})
+            </button>
           </div>
-        </div>
+          <div v-if="filteredUnassigned.length" class="grid gap-2 md:grid-cols-2">
+            <div v-for="question in filteredUnassigned" :key="question.id" class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+              <div class="min-w-0 flex-1"><p class="truncate text-xs font-semibold text-gray-700">{{ question.text }}</p><p class="mt-1 text-[10px] uppercase text-gray-400">{{ categoryLabel(question.category) }}</p></div>
+              <select :value="''" @change="assign(question, Number($event.target.value)); $event.target.value = ''" :disabled="busy"
+                aria-label="Assign question to round" class="rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs font-bold text-gray-700">
+                <option value="">Assign…</option>
+                <option v-for="round in draftRounds" :key="round.id" :value="round.id">Round {{ round.position }}</option>
+              </select>
+            </div>
+          </div>
+          <p v-else class="py-5 text-center text-xs font-semibold text-gray-500">No unassigned questions in this category.</p>
+        </template>
         <p v-else class="py-5 text-center text-xs font-semibold text-green-700">Every question has been assigned.</p>
       </section>
     </div>
@@ -113,6 +124,21 @@ const busy = ref(false)
 const error = ref('')
 const message = ref('')
 const draftRounds = computed(() => rounds.value.filter(round => round.status === 'draft'))
+
+// Unassigned-bank category filter for quick selection.
+const categoryTabs = [
+  { key: 'all', label: 'All' },
+  { key: 'general_knowledge', label: 'General' },
+  { key: 'fifa_world_cup', label: 'FIFA ⚽' },
+  { key: 'visa', label: 'Visa' },
+]
+const categoryFilter = ref('all')
+const countFor = (key) => key === 'all'
+  ? unassigned.value.length
+  : unassigned.value.filter(question => question.category === key).length
+const filteredUnassigned = computed(() => categoryFilter.value === 'all'
+  ? unassigned.value
+  : unassigned.value.filter(question => question.category === categoryFilter.value))
 
 onMounted(load)
 
