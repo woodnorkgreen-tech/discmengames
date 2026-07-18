@@ -195,17 +195,17 @@
          TRIVIA REVEAL
     ══════════════════════════════════════════════════════════════════════ -->
     <template v-else-if="phase === 'trivia_reveal' && question">
-      <div class="flex-1 flex flex-col px-8 lg:px-16 pt-8 pb-4">
+      <div class="flex-1 flex flex-col justify-center px-8 lg:px-16 pt-8 pb-4">
         <p class="text-center text-gray-400 mb-4 flex-shrink-0"
           style="font-size: clamp(0.875rem, 1.5vw, 1.8rem)">
           Answer Revealed
         </p>
-        <p class="text-center font-bold mb-6 flex-shrink-0"
+        <p class="text-center font-bold mb-8 flex-shrink-0"
           style="font-size: clamp(1.25rem, 2.5vw, 3.5rem)">
           {{ question.text }}
         </p>
 
-        <div class="grid gap-4 mb-8 flex-shrink-0"
+        <div class="grid gap-4 flex-shrink-0"
           :class="question.options.length === 2 ? 'grid-cols-2' : 'grid-cols-2'">
           <div v-for="(opt, idx) in question.options" :key="idx"
             :class="opt === question.correct_answer
@@ -228,9 +228,10 @@
           </div>
         </div>
 
-        <div class="flex-1 overflow-hidden">
-          <Leaderboard :entries="leaderboard" compact />
-        </div>
+        <p class="mt-10 text-center font-bold uppercase tracking-widest text-white/40 flex-shrink-0"
+          style="font-size: clamp(.7rem, 1.1vw, 1.2rem)">
+          Standings revealed when the round ends
+        </p>
       </div>
     </template>
 
