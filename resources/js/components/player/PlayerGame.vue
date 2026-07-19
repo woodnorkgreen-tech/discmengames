@@ -16,7 +16,7 @@
         <div class="flex min-w-0 items-center gap-2.5">
           <span class="client-header-mark discmen-logo-tile"><img src="/images/client/discmen-entertainment-logo.png" alt="Discmen Entertainment" /></span>
           <span class="hidden text-white/20 sm:inline" aria-hidden="true">×</span>
-          <span class="hidden items-center gap-1.5 text-sm font-black italic tracking-tight text-white sm:flex"><span>FINAL WHISTLE</span><OnIcon /></span>
+          <span class="hidden items-center gap-1.5 text-sm font-black tracking-tight text-white sm:flex"><span>FINAL WHISTLE</span><OnIcon /></span>
         </div>
         <div class="flex items-center gap-3">
           <span v-if="adminPreview" class="rounded-full bg-purple-500/20 px-2.5 py-1 text-xs font-bold text-purple-200">MC Preview · Read only</span>

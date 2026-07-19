@@ -23,7 +23,7 @@
         <!-- Title — clamp scales from small monitors to 4K -->
         <p class="mb-3 font-black uppercase tracking-[.32em] text-[#61C8D2]"
           style="font-size: clamp(.65rem, 1.05vw, 1.25rem)">Discmen Entertainment presents</p>
-        <h1 class="font-black italic uppercase text-white tracking-tight leading-none mb-3"
+        <h1 class="font-black uppercase text-white tracking-tight leading-none mb-3"
           style="font-size: clamp(3rem, 7vw, 9rem)">
           <span>Final Whistle</span>
         </h1>
@@ -288,7 +288,7 @@
     ══════════════════════════════════════════════════════════════════════ -->
     <template v-else>
       <div class="flex-1 flex items-center justify-center">
-        <p class="text-white font-black italic uppercase" style="font-size: clamp(1.5rem, 4vw, 5rem)">
+        <p class="text-white font-black uppercase" style="font-size: clamp(1.5rem, 4vw, 5rem)">
           <span>Discmen Final Whistle</span>
         </p>
       </div>

@@ -9,7 +9,7 @@
           <span class="discmen-logo-tile h-10 w-12 flex-shrink-0 p-1" aria-label="Discmen Entertainment">
             <img src="/images/client/discmen-entertainment-logo.png" alt="Discmen Entertainment" />
           </span>
-          <h1 class="hidden font-black italic text-base text-discmen sm:flex sm:text-lg sm:items-center sm:gap-2"><span>DISCMEN FINAL WHISTLE</span><span class="hidden md:inline not-italic font-bold ml-1">— Admin</span></h1>
+          <h1 class="hidden font-black text-base text-discmen sm:flex sm:text-lg sm:items-center sm:gap-2"><span>DISCMEN FINAL WHISTLE</span><span class="hidden md:inline font-bold ml-1">— Admin</span></h1>
           <span class="text-xs font-black uppercase tracking-widest text-discmen sm:hidden">Admin</span>
         </div>
 

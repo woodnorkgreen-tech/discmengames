@@ -28,7 +28,7 @@
       <h1 class="text-white font-black leading-[1.12] mb-5 max-w-3xl tracking-[-0.03em]"
         style="font-size: clamp(1.7rem, 4vw, 4rem); text-shadow: 0 3px 24px rgba(0,0,0,0.5)">
         Tap into the action.<br />
-        <span class="italic uppercase text-discmen-accent">Predict the Final. Own the Moment.</span>
+        <span class="uppercase text-discmen-accent">Predict the Final. Own the Moment.</span>
       </h1>
 
       <p class="max-w-xl text-white/72 text-sm sm:text-base lg:text-lg leading-relaxed mb-8">

@@ -14,14 +14,15 @@ export default {
             fontFamily: {
                 display: ['Outfit', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
             },
-            // Slimmed weight scale: existing font-bold/black classes render
-            // lighter app-wide via the variable font (100–900)
+            // Slim weight scale: preserve hierarchy without dense, heavy type.
             fontWeight: {
-                medium:    '400',
-                semibold:  '450',
-                bold:      '500',
-                extrabold: '550',
-                black:     '600',
+                light:     '250',
+                normal:    '300',
+                medium:    '350',
+                semibold:  '400',
+                bold:      '450',
+                extrabold: '500',
+                black:     '550',
             },
         },
     },
