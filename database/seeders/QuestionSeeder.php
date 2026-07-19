@@ -45,6 +45,13 @@ class QuestionSeeder extends Seeder
             ['fifa_world_cup', 'Which country has appeared in every FIFA World Cup tournament?', ['Germany', 'Argentina', 'Brazil', 'Italy'], 'Brazil', 25],
         ];
 
+        // Reviewed, durable alternates supplied for the event. These remain
+        // unassigned so adding them never changes the configured live rounds.
+        $questions = array_merge(
+            $questions,
+            require database_path('data/hard_general_knowledge_questions.php'),
+        );
+
         // Four questions per round. Everything else stays in the unassigned
         // bank as a reviewed alternate instead of making the live show too long.
         $assignments = [
