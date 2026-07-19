@@ -1,6 +1,6 @@
 {
-    "name": "visa/final-whistle",
-    "description": "Visa Final Whistle — live football prediction and trivia platform",
+    "name": "discmen/final-whistle",
+    "description": "Discmen Final Whistle — live football prediction and trivia platform",
     "keywords": ["laravel", "event", "trivia", "predictions"],
     "license": "MIT",
     "require": {

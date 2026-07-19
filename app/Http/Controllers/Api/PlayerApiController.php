@@ -30,7 +30,6 @@ class PlayerApiController extends Controller
             'nickname'      => 'required|string|min:2|max:50',
             'pin'           => ['required', 'digits:4'],
             'consent'       => 'required|accepted',
-            'has_visa_card' => 'boolean',
         ]);
 
         $nickname = trim($data['nickname']);
@@ -46,7 +45,6 @@ class PlayerApiController extends Controller
             $player = Player::create([
                 'nickname'      => $nickname,
                 'consent'       => true,
-                'has_visa_card' => $data['has_visa_card'] ?? false,
                 'login_pin_hash' => Hash::make($data['pin']),
             ]);
         } catch (UniqueConstraintViolationException) {

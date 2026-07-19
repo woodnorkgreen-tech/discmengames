@@ -1,15 +1,15 @@
 <template>
   <!-- screen-root fixes the view to the viewport and prevents any scrolling on TV browsers -->
-  <div class="screen-root screen-brand-bg text-white font-display select-none flex flex-col">
+  <div class="screen-root screen-brand-bg text-white font-display select-none flex flex-col" :class="`phase-${phase}`">
 
     <div class="fixed right-3 top-3 z-50 flex items-center gap-2 print:hidden">
       <span v-if="linkMessage" class="rounded-full bg-black/70 px-3 py-2 text-xs font-bold text-white backdrop-blur">{{ linkMessage }}</span>
       <button type="button" @click="copyScreenLink" title="Copy public Main Screen link"
-        class="rounded-full border border-white/15 bg-black/55 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-visa-gold">
+        class="rounded-full border border-white/15 bg-black/55 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-discmen-accent">
         🔗 <span class="hidden sm:inline">Public link</span>
       </button>
       <button type="button" @click="toggleFullscreen" :title="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
-        class="rounded-full border border-white/15 bg-black/55 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-visa-gold">
+        class="rounded-full border border-white/15 bg-black/55 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-discmen-accent">
         {{ isFullscreen ? '✕' : '⛶' }} <span class="hidden sm:inline">{{ isFullscreen ? 'Exit' : 'Fullscreen' }}</span>
       </button>
     </div>
@@ -21,24 +21,27 @@
       <div class="flex-1 flex flex-col items-center justify-center px-8 lg:px-16 text-center">
 
         <!-- Title — clamp scales from small monitors to 4K -->
+        <p class="mb-3 font-black uppercase tracking-[.32em] text-[#61C8D2]"
+          style="font-size: clamp(.65rem, 1.05vw, 1.25rem)">Discmen Entertainment presents</p>
         <h1 class="font-black italic uppercase text-white tracking-tight leading-none mb-3"
           style="font-size: clamp(3rem, 7vw, 9rem)">
           <span>Final Whistle</span>
         </h1>
-        <div class="flex items-center justify-center gap-5 lg:gap-8 mb-8 lg:mb-12">
-          <span class="text-gray-300" style="font-size: clamp(0.9rem, 1.6vw, 2rem)">Tap In with</span>
-          <img src="/images/visa-logo.svg" alt="Visa"
-            class="object-contain drop-shadow-lg" style="height: clamp(1.8rem, 3.8vw, 4.6rem)" />
+        <div class="mb-8 flex items-center justify-center lg:mb-12">
+          <span class="rounded-full border border-[#61C8D2]/25 bg-black/30 px-6 py-2 font-black uppercase tracking-[.18em] text-[#61C8D2] backdrop-blur"
+            style="font-size: clamp(.75rem, 1.35vw, 1.55rem)">The live football fan experience</span>
         </div>
 
         <!-- Broadcast layout: join left, event status centre, recent activity right -->
         <div class="broadcast-grid mb-6 grid w-full grid-cols-[minmax(12rem,.85fr)_minmax(18rem,1.25fr)_minmax(15rem,1fr)] items-center gap-6 lg:gap-10">
           <!-- LEFT: QR — large enough to scan from across the room -->
           <div class="flex flex-col items-center flex-shrink-0">
-            <div class="bg-white p-4 lg:p-5 rounded-3xl shadow-2xl">
-              <canvas ref="qrCanvas" :width="qrSize" :height="qrSize"></canvas>
+            <div class="client-qr-stage">
+              <div class="client-qr-frame">
+                <canvas ref="qrCanvas" :width="qrSize" :height="qrSize" class="client-qr-code"></canvas>
+              </div>
             </div>
-            <p class="font-black text-white leading-tight mt-4"
+            <p class="font-black uppercase tracking-[.04em] text-white leading-tight mt-4"
               style="font-size: clamp(1.3rem, 2.4vw, 3.2rem)">
               Scan to play
             </p>
@@ -50,9 +53,9 @@
           <!-- CENTRE: kick-off and prediction state remain on the screen axis -->
           <div class="flex-1 flex flex-col items-center text-center">
             <div class="rounded-2xl border px-6 py-3"
-              :class="phase === 'predictions_closed' ? 'border-orange-400/30 bg-orange-400/10' : 'border-visa-gold/30 bg-visa/20'">
+              :class="phase === 'predictions_closed' ? 'border-orange-400/30 bg-orange-400/10' : 'border-discmen-accent/30 bg-discmen/20'">
               <p class="font-black uppercase tracking-widest"
-                :class="phase === 'predictions_closed' ? 'text-orange-400' : 'text-visa-gold'"
+                :class="phase === 'predictions_closed' ? 'text-orange-400' : 'text-discmen-accent'"
                 style="font-size: clamp(.65rem, 1vw, 1rem)">
                 {{ phase === 'predictions_closed' ? '🔒 Predictions closed' : '● Predictions open' }}
               </p>
@@ -60,8 +63,8 @@
                 {{ predictionCount }} locked in
               </p>
             </div>
-            <div v-if="phase === 'predictions_open'" class="mt-4 max-w-xl rounded-xl border border-visa-gold/25 bg-visa-gold/10 px-4 py-3">
-              <p class="font-black uppercase tracking-widest text-visa-gold" style="font-size: clamp(.6rem,.9vw,.9rem)">Prediction rule</p>
+            <div v-if="phase === 'predictions_open'" class="mt-4 max-w-xl rounded-xl border border-discmen-accent/25 bg-discmen-accent/10 px-4 py-3">
+              <p class="font-black uppercase tracking-widest text-discmen-accent" style="font-size: clamp(.6rem,.9vw,.9rem)">Prediction rule</p>
               <p class="mt-1 font-semibold leading-snug text-white" style="font-size: clamp(.8rem,1.25vw,1.35rem)">
                 Final score means the score after 90 minutes + stoppage time.
               </p>
@@ -81,12 +84,12 @@
                 <p class="font-black uppercase tracking-widest text-white" style="font-size: clamp(.65rem,1vw,1rem)">Latest locked in</p>
                 <p class="mt-0.5 text-gray-500" style="font-size: clamp(.55rem,.8vw,.8rem)">{{ predictionFeed.length }} players · newest first</p>
               </div>
-              <span class="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-visa-gold"></span>
+              <span class="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-discmen-accent"></span>
             </div>
             <TransitionGroup v-if="predictionFeed.length" name="ticker" tag="ol" class="prediction-feed-scroll max-h-[42vh] space-y-2 overflow-y-auto overscroll-contain pr-1">
               <li v-for="(entry, idx) in predictionFeed" :key="entry.id"
                 class="flex min-w-0 items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-visa/30 text-xs font-black text-visa-gold">{{ idx + 1 }}</span>
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-discmen/30 text-xs font-black text-discmen-accent">{{ idx + 1 }}</span>
                 <div class="min-w-0">
                   <p class="truncate font-bold text-white" style="font-size: clamp(.75rem,1.2vw,1.3rem)">{{ entry.nickname }}</p>
                   <p class="text-gray-500" style="font-size: clamp(.55rem,.75vw,.75rem)">Prediction locked ✓</p>
@@ -108,11 +111,11 @@
     ══════════════════════════════════════════════════════════════════════ -->
     <template v-else-if="roundsEnabled && phase === 'trivia_live' && !question && round?.status === 'live'">
       <div class="phase-enter flex-1 flex flex-col items-center justify-center px-10 text-center">
-        <p class="font-black uppercase tracking-[.3em] text-visa-gold" style="font-size: clamp(.9rem,1.5vw,1.7rem)">Round {{ round.number }} of {{ round.total }}</p>
-        <div class="my-7 flex h-28 w-28 items-center justify-center rounded-full border border-visa-gold/30 bg-visa/20 text-6xl lg:h-36 lg:w-36 lg:text-7xl">{{ round.number === 2 ? '⚽' : '⚡' }}</div>
+        <p class="font-black uppercase tracking-[.3em] text-discmen-accent" style="font-size: clamp(.9rem,1.5vw,1.7rem)">Round {{ round.number }} of {{ round.total }}</p>
+        <div class="my-7 flex h-28 w-28 items-center justify-center rounded-full border border-discmen-accent/30 bg-discmen/20 text-6xl lg:h-36 lg:w-36 lg:text-7xl">{{ round.number === 2 ? '⚽' : '⚡' }}</div>
         <h2 class="font-black text-white" style="font-size: clamp(3rem,7vw,8rem)">{{ round.title }}</h2>
         <p class="mt-5 max-w-4xl text-gray-300" style="font-size: clamp(1rem,2vw,2.4rem)">{{ round.intro_message }}</p>
-        <p class="mt-8 font-bold uppercase tracking-widest text-white/40" style="font-size: clamp(.8rem,1.2vw,1.3rem)">{{ questionProgress.total }} questions · One Visa Power Question</p>
+        <p class="mt-8 font-bold uppercase tracking-widest text-white/40" style="font-size: clamp(.8rem,1.2vw,1.3rem)">{{ questionProgress.total }} questions · One Power Question</p>
       </div>
     </template>
 
@@ -128,7 +131,7 @@
             <template v-else>Question {{ round.current }} / {{ round.total }}</template>
           </span>
           <span v-if="question.is_double_points"
-            class="bg-visa-gold text-black font-black uppercase tracking-widest animate-pulse rounded-full px-5 py-2"
+            class="bg-discmen-accent text-black font-black uppercase tracking-widest animate-pulse rounded-full px-5 py-2"
             style="font-size: clamp(0.75rem, 1.5vw, 1.5rem)">
             ⚡ DOUBLE POINTS ⚡
           </span>
@@ -141,7 +144,7 @@
           <div class="flex items-center gap-4 lg:gap-7">
             <div class="text-right">
               <Transition name="count" mode="out-in">
-                <p :key="question.answer_count" class="font-black text-visa-gold tabular-nums" style="font-size: clamp(1.4rem, 3vw, 3.5rem)">{{ question.answer_count ?? 0 }}</p>
+                <p :key="question.answer_count" class="font-black text-discmen-accent tabular-nums" style="font-size: clamp(1.4rem, 3vw, 3.5rem)">{{ question.answer_count ?? 0 }}</p>
               </Transition>
               <p class="text-gray-500 uppercase tracking-wider" style="font-size: clamp(.55rem, .9vw, .9rem)">Answers live</p>
             </div>
@@ -209,7 +212,7 @@
           :class="question.options.length === 2 ? 'grid-cols-2' : 'grid-cols-2'">
           <div v-for="(opt, idx) in question.options" :key="idx"
             :class="opt === question.correct_answer
-              ? 'bg-visa-gold/30 border-visa-gold text-white'
+              ? 'bg-discmen-accent/30 border-discmen-accent text-white'
               : 'bg-white/5 border-white/10 text-gray-500'"
             class="border-2 rounded-2xl flex items-center gap-4 px-5 lg:px-8 py-4 lg:py-5 transition-all">
             <span class="text-2xl lg:text-3xl flex-shrink-0">
@@ -221,7 +224,7 @@
               {{ opt }}
             </span>
             <div class="ml-auto shrink-0 text-right">
-              <p class="font-black tabular-nums" :class="opt === question.correct_answer ? 'text-visa-gold' : 'text-gray-500'"
+              <p class="font-black tabular-nums" :class="opt === question.correct_answer ? 'text-discmen-accent' : 'text-gray-500'"
                 style="font-size: clamp(.8rem, 1.5vw, 1.7rem)">{{ optionCount(opt) }}</p>
               <p class="text-gray-600" style="font-size: clamp(.55rem, .8vw, .8rem)">{{ optionPercent(opt) }}%</p>
             </div>
@@ -239,7 +242,7 @@
       <div class="phase-enter flex-1 flex flex-col px-8 lg:px-16 pt-6 lg:pt-8 pb-4 overflow-hidden">
         <div class="mb-4 flex shrink-0 items-end justify-between gap-5">
           <div>
-            <p class="font-black uppercase tracking-[.22em] text-visa-gold" style="font-size: clamp(.7rem,1.1vw,1.1rem)">Round {{ round.number }} champion</p>
+            <p class="font-black uppercase tracking-[.22em] text-discmen-accent" style="font-size: clamp(.7rem,1.1vw,1.1rem)">Round {{ round.number }} champion</p>
             <h2 class="mt-1 font-black text-white" style="font-size: clamp(1.7rem,3vw,3.8rem)">{{ round.title }}</h2>
           </div>
           <p class="text-right text-gray-400" style="font-size: clamp(.7rem,1vw,1rem)">Round points contribute to the overall trivia total</p>
@@ -255,7 +258,7 @@
     ══════════════════════════════════════════════════════════════════════ -->
     <template v-else-if="phase === 'trivia_complete'">
       <div class="phase-enter flex-1 flex flex-col px-8 lg:px-16 pt-6 lg:pt-8 pb-4 overflow-hidden">
-        <h2 class="flex-shrink-0 text-center font-light uppercase tracking-[.15em] text-visa-gold mb-3 lg:mb-4"
+        <h2 class="flex-shrink-0 text-center font-light uppercase tracking-[.15em] text-discmen-accent mb-3 lg:mb-4"
           style="font-size: clamp(1.1rem, 2.2vw, 2.4rem)">
           TRIVIA LEADERBOARD
         </h2>
@@ -270,7 +273,7 @@
     ══════════════════════════════════════════════════════════════════════ -->
     <template v-else-if="['match_ended', 'prediction_reveal'].includes(phase)">
       <div class="flex-1 flex flex-col px-8 lg:px-16 pt-6 lg:pt-8 pb-4 overflow-hidden">
-        <h2 class="flex-shrink-0 text-center font-light uppercase tracking-[.15em] text-visa-gold mb-3 lg:mb-4"
+        <h2 class="flex-shrink-0 text-center font-light uppercase tracking-[.15em] text-discmen-accent mb-3 lg:mb-4"
           style="font-size: clamp(1.1rem, 2.2vw, 2.4rem)">
           PREDICTIONS LEADERBOARD
         </h2>
@@ -286,7 +289,7 @@
     <template v-else>
       <div class="flex-1 flex items-center justify-center">
         <p class="text-white font-black italic uppercase" style="font-size: clamp(1.5rem, 4vw, 5rem)">
-          <span>Visa Final Whistle</span>
+          <span>Discmen Final Whistle</span>
         </p>
       </div>
     </template>
@@ -294,11 +297,11 @@
     <!-- ══════════════════════════════════════════════════════════════════════
          BOTTOM BRAND STRIP
     ══════════════════════════════════════════════════════════════════════ -->
-    <div class="flex-shrink-0 bg-gradient-to-r from-visa via-[#1434CB] to-visa
-                flex items-center justify-center gap-6 lg:gap-12 px-8"
-      style="height: clamp(2.5rem, 4vh, 5rem)">
-      <img src="/images/visa-logo.svg" alt="Visa"
-        class="object-contain opacity-100" style="height: clamp(1rem, 2vh, 2.2rem)" />
+    <div class="client-brand-strip flex-shrink-0 flex items-center justify-center gap-4 lg:gap-8 px-8"
+      style="height: clamp(3.4rem, 6vh, 6.5rem)">
+      <span class="screen-client-logo discmen-logo-tile" aria-label="Discmen Entertainment">
+        <img src="/images/client/discmen-entertainment-logo.png" alt="Discmen Entertainment" />
+      </span>
       <span class="text-white/30">·</span>
       <span class="text-white font-semibold tracking-widest opacity-80"
         style="font-size: clamp(0.6rem, 1.2vw, 1.2rem)">ARGENTINA vs SPAIN · FINAL</span>
@@ -414,8 +417,8 @@ const dashOffset = computed(() => {
 const timerColor = computed(() => {
   const total = question.value?.duration_seconds ?? 1
   const ratio = timeLeft.value / total
-  if (ratio > 0.5) return '#F7B600'
-  if (ratio > 0.25) return '#F7B600'
+  if (ratio > 0.5) return '#61C8D2'
+  if (ratio > 0.25) return '#61C8D2'
   return '#C8102E'
 })
 
@@ -445,21 +448,118 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.client-qr-stage {
+  position: relative;
+  z-index: 0;
+  padding: clamp(.3rem, .7vw, .7rem);
+}
+.client-qr-stage::before,
+.client-qr-stage::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+.client-qr-stage::before {
+  inset: 4% -7%;
+  border: clamp(3px, .42vw, 7px) solid rgba(97, 200, 210, .82);
+  border-radius: clamp(1.7rem, 2.6vw, 3rem);
+  transform: rotate(-2deg);
+  box-shadow: 0 0 38px rgba(97, 200, 210, .22);
+}
+.client-qr-stage::after {
+  width: 42%;
+  height: 18%;
+  right: -12%;
+  bottom: 4%;
+  background: repeating-linear-gradient(-18deg, rgba(97, 200, 210, .95) 0 5px, transparent 6px 11px);
+  transform: skewX(-18deg);
+  opacity: .8;
+}
+.client-qr-frame {
+  position: relative;
+  padding: clamp(.65rem, 1vw, 1.05rem);
+  overflow: hidden;
+  border: clamp(4px, .5vw, 9px) solid #fff;
+  border-radius: clamp(1.5rem, 2.3vw, 2.7rem);
+  background: var(--discmen-black);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .48), inset 0 0 0 2px rgba(97, 200, 210, .13);
+}
+.client-qr-code {
+  display: block;
+  max-width: min(20vw, 320px);
+  height: auto;
+  border-radius: clamp(.5rem, .8vw, .9rem);
+}
+.client-brand-strip {
+  border-top: 1px solid rgba(97, 200, 210, .22);
+  background: linear-gradient(90deg, #100f0d 0%, #173f44 42%, #147783 70%, #100f0d 100%);
+  box-shadow: 0 -12px 35px rgba(0, 0, 0, .28);
+}
+.screen-client-logo {
+  width: clamp(3.8rem, 6vw, 7rem);
+  height: clamp(2.8rem, 4.8vh, 5rem);
+  padding: clamp(.2rem, .35vw, .45rem);
+  border-radius: clamp(.55rem, .8vw, .9rem);
+  box-shadow: 0 0 28px rgba(97, 200, 210, .16);
+}
 .screen-brand-bg {
-  background-color: #03130b;
+  isolation: isolate;
+  background-color: #100f0d;
   background-image:
-    linear-gradient(90deg, rgba(2, 18, 10, .92), rgba(2, 18, 10, .78) 55%, rgba(2, 18, 10, .44)),
-    url('/images/backgrounds/event-landscape-visa.png');
+    linear-gradient(90deg, rgba(7, 11, 10, .9) 0%, rgba(15, 55, 59, .68) 54%, rgba(9, 30, 31, .38) 100%),
+    linear-gradient(180deg, rgba(7, 10, 9, .46) 0%, transparent 51%, rgba(7, 10, 9, .74) 100%),
+    url('/images/backgrounds/discmenbg.jpeg');
   background-size: cover;
   background-position: center;
+  box-shadow: inset 0 0 180px rgba(0, 0, 0, .48);
+}
+.screen-brand-bg::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 34%, rgba(97, 200, 210, .22), transparent 27%),
+    radial-gradient(circle at 82% 22%, rgba(255, 255, 255, .1), transparent 26%);
+  animation: stadium-lights 12s ease-in-out infinite alternate;
+}
+.screen-brand-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .14;
+  background: repeating-linear-gradient(115deg, transparent 0 105px, rgba(255,255,255,.08) 106px, transparent 108px);
+  mix-blend-mode: screen;
+}
+.screen-brand-bg.phase-lobby,
+.screen-brand-bg.phase-predictions_open,
+.screen-brand-bg.phase-predictions_closed {
+  background-image:
+    linear-gradient(90deg, rgba(7, 11, 10, .8) 0%, rgba(15, 55, 59, .52) 52%, rgba(9, 30, 31, .2) 100%),
+    linear-gradient(180deg, rgba(7, 10, 9, .34), transparent 58%, rgba(7, 10, 9, .6)),
+    url('/images/backgrounds/discmenbg.jpeg');
+}
+.screen-brand-bg.phase-trivia_live,
+.screen-brand-bg.phase-trivia_reveal,
+.screen-brand-bg.phase-trivia_complete,
+.screen-brand-bg.phase-prediction_reveal,
+.screen-brand-bg.phase-match_ended {
+  background-image:
+    linear-gradient(90deg, rgba(7, 11, 10, .95), rgba(15, 55, 59, .82) 58%, rgba(9, 30, 31, .64)),
+    linear-gradient(180deg, rgba(7, 10, 9, .62), transparent 48%, rgba(7, 10, 9, .84)),
+    url('/images/backgrounds/discmenbg.jpeg');
 }
 .ticker-enter-active, .ticker-leave-active { transition: all 0.5s ease; }
 .ticker-enter-from { opacity: 0; transform: translateY(14px); }
 .ticker-leave-to   { opacity: 0; transform: translateY(-14px); }
-.prediction-feed-scroll { scrollbar-width: thin; scrollbar-color: rgba(53,208,111,.65) rgba(255,255,255,.06); }
+.prediction-feed-scroll { scrollbar-width: thin; scrollbar-color: rgba(97,200,210,.65) rgba(255,255,255,.06); }
 .prediction-feed-scroll::-webkit-scrollbar { width: 7px; }
 .prediction-feed-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,.05); border-radius: 999px; }
-.prediction-feed-scroll::-webkit-scrollbar-thumb { background: rgba(53,208,111,.65); border-radius: 999px; }
+.prediction-feed-scroll::-webkit-scrollbar-thumb { background: rgba(97,200,210,.65); border-radius: 999px; }
 .phase-enter { animation: phase-in .45s cubic-bezier(.2,.8,.2,1) both; }
 .count-enter-active, .count-leave-active { transition: all .2s ease; }
 .count-enter-from { opacity: 0; transform: translateY(12px) scale(1.15); }
@@ -473,8 +573,13 @@ onUnmounted(() => {
   from { opacity: 0; transform: translateY(18px) scale(.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes stadium-lights {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); opacity: .7; }
+  to { transform: translate3d(1.5%, 1%, 0) scale(1.05); opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
   .phase-enter { animation: none; }
+  .screen-brand-bg::before { animation: none; }
   .ticker-enter-active, .ticker-leave-active, .count-enter-active, .count-leave-active { transition: none; }
 }
 </style>

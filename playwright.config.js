@@ -8,7 +8,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'storage/playwright-report' }]],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://mpesa-visa.ddev.site',
+    baseURL: process.env.E2E_BASE_URL ?? 'https://discmen-final-whistle.ddev.site',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },

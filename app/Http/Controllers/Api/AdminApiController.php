@@ -14,15 +14,79 @@ use App\Models\Question;
 use App\Models\SportsPlayer;
 use App\Models\SportsTeam;
 use App\Models\TriviaRound;
+use App\Models\TriviaCategory;
 use App\Services\ScoringService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class AdminApiController extends Controller
 {
+    // ── Reusable trivia categories ───────────────────────────────────────────
+
+    public function listTriviaCategories(): JsonResponse
+    {
+        return response()->json([
+            'data' => TriviaCategory::withCount(['questions', 'rounds'])->orderBy('name')->get(),
+        ]);
+    }
+
+    public function storeTriviaCategory(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:60|unique:trivia_categories,name',
+        ]);
+        $name = trim($data['name']);
+        if ($name === '') return response()->json(['message' => 'Category name cannot be blank.'], 422);
+
+        $baseKey = Str::limit(Str::slug($name, '_'), 52, '');
+        if ($baseKey === '') $baseKey = 'category';
+        $key = $baseKey;
+        $suffix = 2;
+        while (TriviaCategory::where('key', $key)->exists()) {
+            $key = Str::limit($baseKey, 55, '').'_'.($suffix++);
+        }
+
+        $category = TriviaCategory::create(['key' => $key, 'name' => $name]);
+
+        return response()->json($category->loadCount(['questions', 'rounds']), 201);
+    }
+
+    public function updateTriviaCategory(Request $request, TriviaCategory $triviaCategory): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:60', Rule::unique('trivia_categories', 'name')->ignore($triviaCategory->id)],
+        ]);
+        $name = trim($data['name']);
+        if ($name === '') return response()->json(['message' => 'Category name cannot be blank.'], 422);
+
+        // Keep the key stable so renaming a display label never disconnects
+        // existing questions or round themes.
+        $triviaCategory->update(['name' => $name]);
+
+        return response()->json($triviaCategory->fresh()->loadCount(['questions', 'rounds']));
+    }
+
+    public function destroyTriviaCategory(TriviaCategory $triviaCategory): JsonResponse
+    {
+        if ($triviaCategory->is_system) {
+            return response()->json(['message' => 'Core categories can be renamed but not deleted.'], 422);
+        }
+        $triviaCategory->loadCount(['questions', 'rounds']);
+        if ($triviaCategory->questions_count > 0 || $triviaCategory->rounds_count > 0) {
+            return response()->json([
+                'message' => 'Move its questions and round themes to another category before deleting it.',
+            ], 422);
+        }
+
+        $triviaCategory->delete();
+
+        return response()->json(['deleted' => true]);
+    }
+
     public function listPlayers(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -176,7 +240,6 @@ class AdminApiController extends Controller
                     'phone' => $phone,
                     'nickname' => 'Test Fan '.str_pad((string) (Player::where('is_simulated', true)->count() + 1), 3, '0', STR_PAD_LEFT),
                     'consent' => true,
-                    'has_visa_card' => (bool) random_int(0, 1),
                     'is_simulated' => true,
                 ]);
 
@@ -498,6 +561,7 @@ class AdminApiController extends Controller
         return response()->json([
             'enabled' => (bool) $state->rounds_enabled,
             'current_round_id' => $state->current_round_id,
+            'categories' => TriviaCategory::orderBy('name')->get(['id', 'key', 'name']),
             'rounds' => TriviaRound::with('questions')->orderBy('position')->get()
                 ->map(fn (TriviaRound $round) => $this->roundPayload($round)),
             'unassigned' => Question::whereNull('trivia_round_id')->orderBy('order_index')->orderBy('id')->get(),
@@ -530,9 +594,10 @@ class AdminApiController extends Controller
         }
         $data = $request->validate([
             'title' => 'required|string|max:80',
-            'category' => 'nullable|in:general_knowledge,fifa_world_cup,visa',
+            'category' => ['nullable', 'string', 'max:60', Rule::exists('trivia_categories', 'key')],
             'intro_message' => 'nullable|string|max:180',
         ]);
+        $data['category'] = filled($data['category'] ?? null) ? trim($data['category']) : null;
         $round->update($data);
         return response()->json(['round' => $this->roundPayload($round->fresh())]);
     }
@@ -547,16 +612,34 @@ class AdminApiController extends Controller
             'position' => 'nullable|integer|min:1|max:100',
         ]);
         $roundId = $data['round_id'] ?? null;
-        if ($roundId && TriviaRound::findOrFail($roundId)->status !== 'draft') {
-            return response()->json(['message' => 'Questions cannot be added to a live or completed round.'], 422);
+        $targetRound = $roundId ? TriviaRound::findOrFail($roundId) : null;
+        if ($targetRound && !in_array($targetRound->status, ['draft', 'live'], true)) {
+            return response()->json(['message' => 'Questions cannot be added to a completed round.'], 422);
         }
 
-        $question->update([
-            'trivia_round_id' => $roundId,
-            'round_position' => $roundId
-                ? ($data['position'] ?? ((int) Question::where('trivia_round_id', $roundId)->max('round_position') + 1))
-                : null,
-        ]);
+        $previousRoundId = $question->trivia_round_id;
+        if ($targetRound?->status === 'live'
+            && (int) $previousRoundId !== (int) $roundId
+            && $question->is_double_points) {
+            return response()->json(['message' => 'Turn off Power Question before adding it to a live round.'], 422);
+        }
+
+        DB::transaction(function () use ($question, $targetRound, $roundId, $data) {
+            if ($targetRound && $question->is_double_points) {
+                $targetRound->questions()->where('id', '!=', $question->id)->update(['is_double_points' => false]);
+            }
+            $question->update([
+                'trivia_round_id' => $roundId,
+                'round_position' => $roundId
+                    ? ($targetRound->status === 'live'
+                        ? ((int) Question::where('trivia_round_id', $roundId)->max('round_position') + 1)
+                        : ($data['position'] ?? ((int) Question::where('trivia_round_id', $roundId)->max('round_position') + 1)))
+                    : null,
+            ]);
+        });
+        if ($previousRoundId && (int) $previousRoundId !== (int) $roundId) {
+            $this->normalizeRoundPositions((int) $previousRoundId);
+        }
         if ($roundId) $this->normalizeRoundPositions((int) $roundId);
 
         return $this->showRounds();
@@ -628,20 +711,25 @@ class AdminApiController extends Controller
 
     public function listQuestions(): JsonResponse
     {
-        return response()->json(
-            Question::with('triviaRound:id,position,title')->orderBy('order_index')->get()
-        );
+        $categoryNames = TriviaCategory::pluck('name', 'key');
+        $questions = Question::with('triviaRound:id,position,title,status')->orderBy('order_index')->get();
+        $questions->each(fn (Question $question) => $question->setAttribute(
+            'category_name',
+            $categoryNames[$question->category] ?? Str::headline($question->category)
+        ));
+
+        return response()->json($questions);
     }
 
     public function storeQuestion(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'order_index'      => 'required|integer',
+            'order_index'      => 'sometimes|integer|min:0',
             'trivia_round_id'  => 'nullable|exists:trivia_rounds,id',
             'round_position'   => 'nullable|integer|min:1|max:100',
             'type'             => 'required|in:multiple_choice,true_false',
             'text'             => 'required|string',
-            'category'         => 'required|in:general_knowledge,fifa_world_cup,visa',
+            'category'         => ['required', 'string', 'max:60', Rule::exists('trivia_categories', 'key')],
             'options'          => 'required|array|min:2|max:4',
             'options.*'        => 'required|string|max:255|distinct',
             'correct_answer'   => ['required', 'string', Rule::in($request->input('options', []))],
@@ -649,7 +737,37 @@ class AdminApiController extends Controller
             'is_double_points' => 'boolean',
         ]);
 
-        return response()->json(Question::create($data), 201);
+        $round = !empty($data['trivia_round_id'])
+            ? TriviaRound::findOrFail($data['trivia_round_id'])
+            : null;
+        if ($round && !in_array($round->status, ['draft', 'live'], true)) {
+            return response()->json(['message' => 'New questions cannot be added to a completed round.'], 422);
+        }
+        if ($round?->status === 'live' && ($data['is_double_points'] ?? false)) {
+            return response()->json(['message' => 'The Power Question is locked after a round starts. Add this as a standard question.'], 422);
+        }
+
+        $data['text'] = trim($data['text']);
+        $data['category'] = trim($data['category']);
+        if ($data['text'] === '' || $data['category'] === '') {
+            return response()->json(['message' => 'Question text and category cannot be blank.'], 422);
+        }
+        $data['order_index'] = $data['order_index'] ?? ((int) Question::max('order_index') + 1);
+        // New questions always append. Draft rounds can be reordered explicitly;
+        // a live round must never insert a late question before one already shown.
+        $data['round_position'] = $round ? ((int) $round->questions()->max('round_position') + 1) : null;
+
+        $question = DB::transaction(function () use ($data, $round) {
+            if ($round && ($data['is_double_points'] ?? false)) {
+                $round->questions()->update(['is_double_points' => false]);
+            }
+
+            return Question::create($data);
+        });
+
+        if ($round) $this->normalizeRoundPositions((int) $round->id);
+
+        return response()->json($question->fresh()->load('triviaRound:id,position,title,status'), 201);
     }
 
     public function updateQuestion(Request $request, Question $question, ScoringService $scoring): JsonResponse
@@ -658,10 +776,10 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'Cannot edit a live question.'], 422);
         }
         $data = $request->validate([
-            'order_index'      => 'integer',
+            'order_index'      => 'integer|min:0',
             'trivia_round_id'  => 'nullable|exists:trivia_rounds,id',
             'round_position'   => 'nullable|integer|min:1|max:100',
-            'category'         => 'in:general_knowledge,fifa_world_cup,visa',
+            'category'         => ['string', 'max:60', Rule::exists('trivia_categories', 'key')],
             'type'             => 'in:multiple_choice,true_false',
             'text'             => 'string',
             'options'          => 'array|min:2|max:4',
@@ -671,7 +789,60 @@ class AdminApiController extends Controller
             'is_double_points' => 'boolean',
         ]);
 
-        $question->update($data);
+        $options = $data['options'] ?? $question->options;
+        $correctAnswer = $data['correct_answer'] ?? $question->correct_answer;
+        if (!in_array($correctAnswer, $options, true)) {
+            return response()->json(['message' => 'The correct answer must match one of the available options.'], 422);
+        }
+
+        $roundChangeRequested = $request->exists('trivia_round_id');
+        $previousRoundId = $question->trivia_round_id;
+        $targetRoundId = $roundChangeRequested ? ($data['trivia_round_id'] ?? null) : $previousRoundId;
+        $targetRound = $targetRoundId ? TriviaRound::findOrFail($targetRoundId) : null;
+
+        if ($targetRound?->status === 'live'
+            && array_key_exists('is_double_points', $data)
+            && (bool) $data['is_double_points'] !== (bool) $question->is_double_points) {
+            return response()->json(['message' => 'The Power Question is locked after a round starts.'], 422);
+        }
+
+        if ($roundChangeRequested && (int) $targetRoundId !== (int) $previousRoundId) {
+            if ($question->status !== 'draft' || $question->answers()->exists()) {
+                return response()->json(['message' => 'Only unanswered draft questions can be moved between rounds.'], 422);
+            }
+            if ($targetRound && !in_array($targetRound->status, ['draft', 'live'], true)) {
+                return response()->json(['message' => 'Questions cannot be moved into a completed round.'], 422);
+            }
+            $sourceRound = $previousRoundId ? TriviaRound::find($previousRoundId) : null;
+            if ($sourceRound?->status === 'completed') {
+                return response()->json(['message' => 'Questions cannot be removed from a completed round.'], 422);
+            }
+            $data['round_position'] = $targetRound
+                ? ((int) $targetRound->questions()->max('round_position') + 1)
+                : null;
+        } else {
+            // Ordering is managed by the dedicated reorder endpoint.
+            unset($data['round_position']);
+        }
+
+        if (isset($data['text'])) $data['text'] = trim($data['text']);
+        if (isset($data['category'])) $data['category'] = trim($data['category']);
+        if ((array_key_exists('text', $data) && $data['text'] === '')
+            || (array_key_exists('category', $data) && $data['category'] === '')) {
+            return response()->json(['message' => 'Question text and category cannot be blank.'], 422);
+        }
+
+        DB::transaction(function () use ($question, $data, $targetRound) {
+            if ($targetRound && ($data['is_double_points'] ?? false)) {
+                $targetRound->questions()->where('id', '!=', $question->id)->update(['is_double_points' => false]);
+            }
+            $question->update($data);
+        });
+
+        if ($previousRoundId && (int) $previousRoundId !== (int) $targetRoundId) {
+            $this->normalizeRoundPositions((int) $previousRoundId);
+        }
+        if ($targetRoundId) $this->normalizeRoundPositions((int) $targetRoundId);
 
         // Editing a closed question (e.g. correcting the answer key) must flow
         // through to scores, otherwise the change silently does nothing.
@@ -680,7 +851,9 @@ class AdminApiController extends Controller
             Cache::forget('public-event-state-v3');
         }
 
-        return response()->json($question->fresh());
+        Cache::forget('public-event-state-v3');
+
+        return response()->json($question->fresh()->load('triviaRound:id,position,title,status'));
     }
 
     public function updateQuestionDuration(Request $request, Question $question): JsonResponse
@@ -1003,7 +1176,7 @@ class AdminApiController extends Controller
         if ($round->category && $questions->contains(fn ($question) => $question->category !== $round->category)) {
             $issues[] = 'A question does not match the round theme';
         }
-        if ($questions->where('is_double_points', true)->count() === 0) $issues[] = 'No Visa Power Question selected';
+        if ($questions->where('is_double_points', true)->count() === 0) $issues[] = 'No Power Question selected';
         if ($questions->where('is_double_points', true)->count() > 1) $issues[] = 'More than one Power Question';
 
         return [

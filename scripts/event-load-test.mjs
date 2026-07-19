@@ -5,7 +5,7 @@ const args = Object.fromEntries(process.argv.slice(2).map(value => {
   return [key, raw]
 }))
 
-const baseUrl = (args.url ?? process.env.LOAD_TEST_URL ?? 'http://mpesa-visa.ddev.site').replace(/\/$/, '')
+const baseUrl = (args.url ?? process.env.LOAD_TEST_URL ?? 'https://discmen-final-whistle.ddev.site').replace(/\/$/, '')
 const expectedAttendance = Number(args.attendance ?? process.env.EXPECTED_EVENT_ATTENDANCE ?? 100)
 const users = Number(args.users ?? expectedAttendance * 2)
 const durationSeconds = Number(args.duration ?? process.env.LOAD_TEST_DURATION ?? 15)
@@ -34,7 +34,7 @@ async function request(path) {
   const started = performance.now()
   try {
     const response = await fetch(`${baseUrl}${path}`, {
-      headers: { Accept: 'application/json', 'User-Agent': 'visa-event-load-test/2026.1' },
+      headers: { Accept: 'application/json', 'User-Agent': 'discmen-event-load-test/2026.1' },
       signal: AbortSignal.timeout(Math.max(5000, p99LimitMs * 3)),
     })
     await response.arrayBuffer()
@@ -64,7 +64,7 @@ async function mainScreenFeed() {
   }
 }
 
-console.log(`Visa event load test: ${users} virtual users for ${durationSeconds}s`)
+console.log(`Discmen event load test: ${users} virtual users for ${durationSeconds}s`)
 console.log(`Target: ${baseUrl} (2× expected attendance: ${expectedAttendance})`)
 
 await request('/api/state')

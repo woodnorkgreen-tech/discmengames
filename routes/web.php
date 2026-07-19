@@ -28,6 +28,10 @@ Route::middleware('admin.auth')->group(function () {
 
     // Admin API (moved from api.php so session middleware is available)
     Route::prefix('api/admin')->group(function () {
+        Route::get('/question-categories',                    [AdminApiController::class, 'listTriviaCategories']);
+        Route::post('/question-categories',                   [AdminApiController::class, 'storeTriviaCategory']);
+        Route::put('/question-categories/{triviaCategory}',   [AdminApiController::class, 'updateTriviaCategory']);
+        Route::delete('/question-categories/{triviaCategory}',[AdminApiController::class, 'destroyTriviaCategory']);
         Route::get('/audits',                               [AdminApiController::class, 'listAudits']);
         Route::get('/players',                              [AdminApiController::class, 'listPlayers']);
         Route::get('/players/{player}',                     [AdminApiController::class, 'showPlayer']);

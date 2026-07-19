@@ -11,14 +11,13 @@ class Player extends Model
     protected $hidden = ['session_token_hash', 'login_pin_hash'];
 
     protected $fillable = [
-        'phone', 'nickname', 'email', 'consent', 'has_visa_card', 'is_simulated', 'login_pin_hash',
+        'phone', 'nickname', 'email', 'consent', 'is_simulated', 'login_pin_hash',
         'trivia_score', 'trivia_streak', 'trivia_correct_count',
         'trivia_double_correct', 'trivia_manual_adjustment', 'prediction_score',
     ];
 
     protected $casts = [
         'consent' => 'boolean',
-        'has_visa_card' => 'boolean',
         'is_simulated' => 'boolean',
     ];
 

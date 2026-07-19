@@ -12,7 +12,7 @@
 
     <div class="grid gap-2 sm:grid-cols-[1fr_10rem] mb-4">
       <input v-model="search" @input="scheduleSearch" type="search" placeholder="Search by nickname…"
-        class="w-full border border-gray-300 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-visa" />
+        class="w-full border border-gray-300 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-discmen" />
       <select v-model="type" @change="loadPlayers(1)" class="border border-gray-300 rounded-xl px-3 py-3 text-sm bg-white">
         <option value="all">All players</option><option value="real">Real attendees</option><option value="simulated">Simulated</option>
       </select>
@@ -23,7 +23,7 @@
 
     <div v-else class="space-y-2">
       <button v-for="player in players" :key="player.id" @click="openPlayer(player.id)"
-        class="w-full border border-gray-200 hover:border-visa/40 hover:bg-visa/5 rounded-xl p-3 text-left transition">
+        class="w-full border border-gray-200 hover:border-discmen/40 hover:bg-discmen/5 rounded-xl p-3 text-left transition">
         <div class="flex items-start gap-3">
           <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-black text-gray-600">{{ initials(player.nickname) }}</span>
           <div class="min-w-0 flex-1">
@@ -34,7 +34,7 @@
             <p class="text-xs text-gray-500 mt-0.5">Player #{{ player.id }} · joined {{ new Date(player.created_at).toLocaleTimeString() }}</p>
           </div>
           <div class="shrink-0 text-right">
-            <p class="text-sm font-black text-visa">{{ (player.trivia_score + player.prediction_score).toLocaleString() }} pts</p>
+            <p class="text-sm font-black text-discmen">{{ (player.trivia_score + player.prediction_score).toLocaleString() }} pts</p>
             <p class="text-[10px] text-gray-400">{{ player.answers_count }} answers · {{ player.prediction_exists ? 'Prediction ✓' : 'No prediction' }}</p>
           </div>
         </div>
@@ -59,7 +59,7 @@
       </div>
 
       <div class="grid grid-cols-3 gap-2 mb-5">
-        <div class="rounded-xl bg-green-50 p-3 text-center"><p class="text-lg font-black text-visa">{{ selectedSummary.total_score.toLocaleString() }}</p><p class="text-[10px] text-gray-500">Total points</p></div>
+        <div class="rounded-xl bg-green-50 p-3 text-center"><p class="text-lg font-black text-discmen">{{ selectedSummary.total_score.toLocaleString() }}</p><p class="text-[10px] text-gray-500">Total points</p></div>
         <div class="rounded-xl bg-gray-50 p-3 text-center"><p class="text-lg font-black text-gray-800">{{ selectedSummary.answers_count }}</p><p class="text-[10px] text-gray-500">Answers</p></div>
         <div class="rounded-xl bg-gray-50 p-3 text-center"><p class="text-lg font-black text-gray-800">{{ selectedSummary.correct_count }}</p><p class="text-[10px] text-gray-500">Correct</p></div>
       </div>

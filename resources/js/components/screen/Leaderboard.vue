@@ -22,7 +22,7 @@
         <p class="truncate font-black text-white" style="font-size: clamp(.8rem,1.7vw,2rem)">
           {{ entry.nickname }}
         </p>
-        <p class="mt-1 font-black tabular-nums text-visa-gold" style="font-size: clamp(1rem,2.2vw,2.7rem)">
+        <p class="mt-1 font-black tabular-nums text-discmen-accent" style="font-size: clamp(1rem,2.2vw,2.7rem)">
           {{ score(entry).toLocaleString() }} <span class="text-[.45em] uppercase tracking-wider text-white/40">pts</span>
         </p>
       </article>
@@ -39,7 +39,7 @@
             {{ entry.nickname }}
           </p>
         </div>
-        <span class="shrink-0 font-black tabular-nums text-visa-gold"
+        <span class="shrink-0 font-black tabular-nums text-discmen-accent"
           style="font-size: clamp(.8rem,1.45vw,1.6rem)">{{ score(entry).toLocaleString() }}</span>
       </article>
     </TransitionGroup>
@@ -53,13 +53,13 @@
   <section v-else class="leaderboard-columns grid h-full w-full overflow-hidden rounded-3xl border border-white/10 bg-white/[.025]" aria-live="polite">
     <div class="flex min-h-0 flex-col items-center justify-center border-b border-white/10 px-5 py-5 text-center lg:border-b-0 lg:border-r lg:px-7 lg:py-6">
       <div v-if="winner" class="flex shrink-0 flex-col items-center">
-        <div class="visa-winner-card" aria-label="Visa Final Whistle winner card">
-          <span class="visa-card-orbit visa-card-orbit-one"></span>
-          <span class="visa-card-orbit visa-card-orbit-two"></span>
+        <div class="discmen-winner-card" aria-label="Discmen Final Whistle champion badge">
+          <span class="discmen-card-orbit discmen-card-orbit-one"></span>
+          <span class="discmen-card-orbit discmen-card-orbit-two"></span>
           <div class="relative z-10 flex h-full flex-col justify-between text-left">
             <div class="flex items-start justify-between gap-4">
-              <span class="visa-card-chip" aria-hidden="true"></span>
-              <img src="/images/visa-logo.svg" alt="Visa" class="w-[30%] min-w-16 object-contain" />
+              <img src="/images/client/discmen-entertainment-logo.png" alt="Discmen Entertainment" class="h-[48%] max-h-20 w-auto object-contain" />
+              <span class="rounded-full border border-[#61C8D2]/35 bg-[#61C8D2]/10 px-2.5 py-1 text-[clamp(.45rem,.62vw,.65rem)] font-black uppercase tracking-[.18em] text-[#61C8D2]">Champion</span>
             </div>
             <div>
               <p class="text-[clamp(.5rem,.7vw,.72rem)] font-black uppercase tracking-[.24em] text-white/55">Final Whistle</p>
@@ -76,7 +76,7 @@
         <p class="mt-2 max-w-full truncate font-black text-white" style="font-size: clamp(1.35rem,2.4vw,2.8rem)">
           {{ winner.nickname }}
         </p>
-        <p class="mt-1 font-black leading-none tabular-nums text-visa-gold" style="font-size: clamp(1.8rem,3.2vw,3.8rem)">
+        <p class="mt-1 font-black leading-none tabular-nums text-discmen-accent" style="font-size: clamp(1.8rem,3.2vw,3.8rem)">
           {{ score(winner).toLocaleString() }}
         </p>
         <p class="mt-1 font-bold uppercase tracking-widest text-gray-500" style="font-size: clamp(.55rem,.8vw,.85rem)">
@@ -94,7 +94,7 @@
       <div class="mb-2 flex flex-shrink-0 items-center justify-between gap-4 border-b border-white/10 pb-3 lg:mb-3">
         <span class="flex items-center gap-2 font-bold uppercase tracking-widest text-gray-500"
           style="font-size: clamp(.6rem,.85vw,.85rem)">
-          <span class="h-2 w-2 rounded-full bg-visa-gold"></span> Live standings
+          <span class="h-2 w-2 rounded-full bg-discmen-accent"></span> Live standings
         </span>
         <span class="font-bold text-gray-600" style="font-size: clamp(.55rem,.8vw,.8rem)">
           {{ entries.length }} ranked players
@@ -116,7 +116,7 @@
               {{ entry.nickname }}
             </p>
           </div>
-          <span class="shrink-0 font-black tabular-nums text-visa-gold"
+          <span class="shrink-0 font-black tabular-nums text-discmen-accent"
             style="font-size: clamp(.75rem,1.15vw,1.25rem)">{{ score(entry).toLocaleString() }}</span>
         </article>
       </TransitionGroup>
@@ -150,12 +150,12 @@ function entryKey(entry) { return entry.id ?? `${entry.nickname}-${entry.rank}` 
 function score(entry) { return Number(entry.round_score ?? entry.trivia_score ?? entry.prediction_score ?? 0) }
 function medal(rank) { return ['🥇', '🥈', '🥉'][rank - 1] ?? rank }
 function podiumClass(rank) {
-  if (rank === 1) return 'border-visa-gold/50 bg-gradient-to-b from-visa-gold/20 to-white/5 shadow-[0_0_35px_rgba(247,182,0,.12)]'
+  if (rank === 1) return 'border-discmen-accent/50 bg-gradient-to-b from-discmen-accent/20 to-white/5 shadow-[0_0_35px_rgba(97,200,210,.14)]'
   if (rank === 2) return 'border-white/20 bg-gradient-to-b from-white/15 to-white/5'
   return 'border-amber-700/30 bg-gradient-to-b from-amber-700/15 to-white/5'
 }
 function rankColor(rank) {
-  if (rank === 1) return 'text-visa-gold'
+  if (rank === 1) return 'text-discmen-accent'
   if (rank === 2) return 'text-gray-300'
   if (rank === 3) return 'text-amber-600'
   return 'text-gray-500'
@@ -168,35 +168,26 @@ function rankColor(rank) {
 .leaderboard-enter-from { opacity: 0; transform: translateY(12px) scale(.98); }
 .leaderboard-leave-to { opacity: 0; transform: translateY(-8px); }
 .leaderboard-columns { grid-template-columns: minmax(13rem, 30%) 1fr; }
-.visa-winner-card {
+.discmen-winner-card {
   position: relative;
   width: clamp(11rem, 19vw, 18rem);
   aspect-ratio: 1.586 / 1;
   margin-bottom: clamp(.75rem, 1.5vh, 1.25rem);
   overflow: hidden;
-  border: 1px solid rgba(247,182,0,.48);
+  border: 1px solid rgba(97,200,210,.52);
   border-radius: clamp(1rem, 1.5vw, 1.4rem);
   padding: clamp(.85rem, 1.4vw, 1.35rem);
-  background: linear-gradient(145deg, #1434cb 0%, #1a1f71 54%, #080d43 100%);
-  box-shadow: 0 22px 55px rgba(0,0,0,.38), 0 0 34px rgba(247,182,0,.1);
+  background: linear-gradient(145deg, #173f44 0%, #100f0d 56%, #071012 100%);
+  box-shadow: 0 22px 55px rgba(0,0,0,.42), 0 0 34px rgba(97,200,210,.14);
   transform: perspective(700px) rotateX(2deg);
 }
-.visa-card-chip {
-  display: block;
-  width: 17%;
-  aspect-ratio: 1.25;
-  border: 1px solid rgba(255,255,255,.38);
-  border-radius: .3rem;
-  background: linear-gradient(135deg, #ffe59a, #c99a24 48%, #f7d66a);
-  box-shadow: inset 0 0 0 1px rgba(80,55,0,.18);
-}
-.visa-card-orbit { position: absolute; border: 1px solid rgba(247,182,0,.2); border-radius: 999px; }
-.visa-card-orbit-one { width: 80%; aspect-ratio: 1; right: -34%; top: -42%; }
-.visa-card-orbit-two { width: 66%; aspect-ratio: 1; right: -25%; top: -27%; }
-.leaderboard-scroll { scrollbar-width: thin; scrollbar-color: rgba(247,182,0,.5) rgba(255,255,255,.06); }
+.discmen-card-orbit { position: absolute; border: 1px solid rgba(97,200,210,.22); border-radius: 999px; }
+.discmen-card-orbit-one { width: 80%; aspect-ratio: 1; right: -34%; top: -42%; }
+.discmen-card-orbit-two { width: 66%; aspect-ratio: 1; right: -25%; top: -27%; }
+.leaderboard-scroll { scrollbar-width: thin; scrollbar-color: rgba(97,200,210,.55) rgba(255,255,255,.06); }
 .leaderboard-scroll::-webkit-scrollbar { width: 7px; }
 .leaderboard-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,.05); border-radius: 999px; }
-.leaderboard-scroll::-webkit-scrollbar-thumb { background: rgba(247,182,0,.5); border-radius: 999px; }
+.leaderboard-scroll::-webkit-scrollbar-thumb { background: rgba(97,200,210,.55); border-radius: 999px; }
 @media (max-width: 900px), (orientation: portrait) {
   .leaderboard-columns { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 }

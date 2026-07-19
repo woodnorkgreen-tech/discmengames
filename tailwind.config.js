@@ -8,8 +8,8 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Visa navy/gold
-                visa:      { DEFAULT: '#1A1F71', gold: '#F7B600' },
+                // Discmen artwork system: accessible dark teal + exact client cyan.
+                discmen: { DEFAULT: '#147783', accent: '#61C8D2', ink: '#100F0D' },
             },
             fontFamily: {
                 display: ['Outfit', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

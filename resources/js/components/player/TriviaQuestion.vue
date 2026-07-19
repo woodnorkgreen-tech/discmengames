@@ -10,7 +10,7 @@
         </span>
         <span v-if="round.number && questionProgress.total" class="block text-[10px] font-bold uppercase tracking-widest text-white/40">Question {{ questionProgress.current }} of {{ questionProgress.total }}</span>
         <span v-if="question.is_double_points"
-          class="bg-visa-gold text-black text-xs sm:text-sm font-bold px-3 py-1 rounded-full uppercase tracking-wide animate-pulse">
+          class="bg-discmen-accent text-black text-xs sm:text-sm font-bold px-3 py-1 rounded-full uppercase tracking-wide animate-pulse">
           2× POINTS
         </span>
         <span v-else class="text-gray-600 text-xs sm:text-sm">Standard question</span>
@@ -38,10 +38,10 @@
     <details class="mb-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
       <summary class="cursor-pointer text-center font-black text-white">How points work</summary>
       <p class="mt-2 text-center leading-relaxed">
-        Correct <strong class="text-visa-gold">+{{ triviaRules.correct }}</strong> ·
-        Speed up to <strong class="text-visa-gold">+{{ triviaRules.speed_max }}</strong> ·
-        Streak up to <strong class="text-visa-gold">+{{ triviaRules.streak_three_plus }}</strong>
-        <span v-if="question.is_double_points"> · then <strong class="text-visa-gold">×2</strong></span>
+        Correct <strong class="text-discmen-accent">+{{ triviaRules.correct }}</strong> ·
+        Speed up to <strong class="text-discmen-accent">+{{ triviaRules.speed_max }}</strong> ·
+        Streak up to <strong class="text-discmen-accent">+{{ triviaRules.streak_three_plus }}</strong>
+        <span v-if="question.is_double_points"> · then <strong class="text-discmen-accent">×2</strong></span>
       </p>
     </details>
 
@@ -72,10 +72,10 @@
 
       <!-- Feedback banner -->
       <div v-if="answered" class="text-center pb-2 sm:pb-4">
-        <p v-if="submissionError" class="text-visa-gold font-bold text-base sm:text-lg">
+        <p v-if="submissionError" class="text-discmen-accent font-bold text-base sm:text-lg">
           {{ submissionError }}
         </p>
-        <p v-else class="text-visa-gold font-bold text-base sm:text-lg">
+        <p v-else class="text-discmen-accent font-bold text-base sm:text-lg">
           ✓ Answer saved — tap another choice to change it ({{ timeLeft }}s left)
         </p>
       </div>
@@ -103,7 +103,7 @@
         <p class="text-gray-500 text-xs sm:text-sm mt-2">You didn't select an option in time, so this question earns 0 points. Stay sharp for the next one.</p>
       </template>
       <button type="button" @click="showTimeUpModal = false"
-        class="mt-6 w-full rounded-xl bg-visa px-5 py-3 text-sm font-black text-white transition hover:bg-visa">
+        class="mt-6 w-full rounded-xl bg-discmen px-5 py-3 text-sm font-black text-white transition hover:bg-discmen">
         Got it
       </button>
     </PlayerModal>
@@ -148,8 +148,8 @@ const dashOffset = computed(() =>
 )
 const timerColor = computed(() => {
   const ratio = timeLeft.value / props.question.duration_seconds
-  if (ratio > 0.5) return '#F7B600'
-  if (ratio > 0.25) return '#F7B600'
+  if (ratio > 0.5) return '#61C8D2'
+  if (ratio > 0.25) return '#61C8D2'
   return '#C8102E'
 })
 
@@ -185,7 +185,7 @@ watch(() => props.savedAnswer, (answer) => {
 
 function optionClass(option) {
   if (option === selected.value) {
-    return 'bg-visa/25 border-visa-gold text-white ring-2 ring-visa-gold/30'
+    return 'bg-discmen/25 border-discmen-accent text-white ring-2 ring-discmen-accent/30'
   }
   return 'bg-gray-800 border-gray-700 hover:bg-gray-700 hover:border-gray-500 text-white'
 }

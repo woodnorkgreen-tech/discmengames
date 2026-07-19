@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Join Visa Final Whistle')
+@section('title', 'Join Discmen Final Whistle')
 
 @section('content')
 <div id="app">

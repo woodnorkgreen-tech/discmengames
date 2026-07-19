@@ -18,7 +18,7 @@ class EventWriteLoadTest extends Command
 {
     protected $signature = 'event:write-load-test
         {--users=200 : Temporary simulated players}
-        {--url=http://mpesa-visa.ddev.site : Base URL receiving real API requests}
+        {--url=https://discmen-final-whistle.ddev.site : Base URL receiving real API requests}
         {--confirm : Confirm temporary local gameplay mutations and cleanup}';
 
     protected $description = 'Load-test authenticated prediction and trivia writes using temporary local data';
@@ -86,7 +86,7 @@ class EventWriteLoadTest extends Command
 
             $question = Question::create([
                 'order_index' => ((int) Question::max('order_index')) + 1000,
-                'category' => 'visa', 'type' => 'multiple_choice',
+                'category' => 'general_knowledge', 'type' => 'multiple_choice',
                 'text' => 'Authenticated write-load verification question',
                 'options' => ['Yes', 'No'], 'correct_answer' => 'Yes',
                 'duration_seconds' => 120, 'status' => 'live', 'activated_at' => now(),

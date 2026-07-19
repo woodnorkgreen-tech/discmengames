@@ -5,7 +5,13 @@
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <!-- Primary row: title + sign out -->
       <div class="flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-gray-100">
-        <h1 class="font-black italic text-base sm:text-lg text-visa flex items-center gap-2"><span>VISA FINAL WHISTLE</span><span class="hidden sm:inline not-italic font-bold ml-1">— Admin</span></h1>
+        <div class="flex min-w-0 items-center gap-2.5">
+          <span class="discmen-logo-tile h-10 w-12 flex-shrink-0 p-1" aria-label="Discmen Entertainment">
+            <img src="/images/client/discmen-entertainment-logo.png" alt="Discmen Entertainment" />
+          </span>
+          <h1 class="hidden font-black italic text-base text-discmen sm:flex sm:text-lg sm:items-center sm:gap-2"><span>DISCMEN FINAL WHISTLE</span><span class="hidden md:inline not-italic font-bold ml-1">— Admin</span></h1>
+          <span class="text-xs font-black uppercase tracking-widest text-discmen sm:hidden">Admin</span>
+        </div>
 
         <div class="flex items-center gap-2 sm:gap-4">
           <button type="button" @click="goToTestTools"
@@ -41,7 +47,7 @@
         <button v-for="tab in tabs" :key="tab.id"
           @click="activeTab = tab.id"
           :class="activeTab === tab.id
-            ? 'border-visa text-visa bg-visa/5'
+            ? 'border-discmen text-discmen bg-discmen/5'
             : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
           class="flex-1 sm:flex-none sm:min-w-[120px] py-3 px-4 sm:px-6 text-sm font-semibold border-b-2 transition whitespace-nowrap text-center">
           {{ tab.label }}
@@ -77,7 +83,7 @@
         <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button v-for="section in adminSections" :key="section.id" type="button" @click="adminSection = section.id"
             class="shrink-0 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold transition"
-            :class="adminSection === section.id ? 'bg-visa text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-visa/40'">
+            :class="adminSection === section.id ? 'bg-discmen text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-discmen/40'">
             <span aria-hidden="true">{{ section.icon }}</span> {{ section.label }}
           </button>
         </div>
@@ -92,14 +98,14 @@
           <p class="mt-1 text-sm font-semibold text-gray-800">“Predictions are scored on the result after 90 minutes plus stoppage time. Extra time and penalty shootouts do not count.”</p>
           <p class="mt-1 text-xs text-gray-500">Read this before predictions close. Enter the same regulation-time score in Match Result.</p>
         </div>
-        <div class="rounded-xl border border-visa/20 bg-visa/5 p-4 mb-4 flex items-center justify-between gap-4">
+        <div class="rounded-xl border border-discmen/20 bg-discmen/5 p-4 mb-4 flex items-center justify-between gap-4">
           <div>
-            <p class="text-xs font-bold uppercase tracking-wider text-visa">Recommended next action</p>
+            <p class="text-xs font-bold uppercase tracking-wider text-discmen">Recommended next action</p>
             <p class="text-sm font-semibold text-gray-800 mt-1">{{ nextAction.label }}</p>
             <p class="text-xs text-gray-500 mt-0.5">{{ nextAction.help }}</p>
           </div>
           <button v-if="nextAction.phase" @click="setPhase(nextAction.phase)"
-            class="bg-visa text-white px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
+            class="bg-discmen text-white px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
             Continue →
           </button>
         </div>
@@ -107,7 +113,7 @@
           <button v-for="p in phases" :key="p.value"
             @click="setPhase(p.value)"
             :class="phase === p.value
-              ? 'bg-visa text-white shadow-sm'
+              ? 'bg-discmen text-white shadow-sm'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300'"
             class="px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition text-center">
             {{ p.label }}
@@ -167,7 +173,7 @@
               <h3 class="text-sm font-bold text-gray-700">Team library</h3>
               <p class="text-xs text-gray-500">Load a saved squad, or manage teams and players below.</p>
             </div>
-            <button type="button" @click="showTeamManager = !showTeamManager" class="text-xs font-bold text-visa">
+            <button type="button" @click="showTeamManager = !showTeamManager" class="text-xs font-bold text-discmen">
               {{ showTeamManager ? 'Close' : 'Manage teams' }}
             </button>
           </div>
@@ -187,7 +193,7 @@
             <form @submit.prevent="createTeam" class="grid grid-cols-[1fr_5rem_auto] gap-2">
               <input v-model="newTeam.name" required placeholder="New team name" class="min-w-0 bg-white border border-gray-300 rounded-lg px-2 py-2 text-sm" />
               <input v-model="newTeam.code" maxlength="3" placeholder="Code" class="min-w-0 bg-white border border-gray-300 rounded-lg px-2 py-2 text-sm uppercase" />
-              <button class="bg-visa text-white rounded-lg px-3 text-sm font-bold">Add</button>
+              <button class="bg-discmen text-white rounded-lg px-3 text-sm font-bold">Add</button>
             </form>
             <select v-model="managedTeamId" class="w-full bg-white border border-gray-300 rounded-lg px-2 py-2 text-sm">
               <option value="">Choose a team to edit…</option><option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
@@ -211,19 +217,19 @@
         </div>
         <form @submit.prevent="saveMatchConfig(false)" class="space-y-4">
           <div class="grid sm:grid-cols-3 gap-3">
-            <label class="text-xs text-gray-500">Home team<input v-model="matchForm.home_team" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-visa focus:outline-none" /></label>
-            <label class="text-xs text-gray-500">Away team<input v-model="matchForm.away_team" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-visa focus:outline-none" /></label>
+            <label class="text-xs text-gray-500">Home team<input v-model="matchForm.home_team" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-discmen focus:outline-none" /></label>
+            <label class="text-xs text-gray-500">Away team<input v-model="matchForm.away_team" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-discmen focus:outline-none" /></label>
           </div>
           <div class="grid sm:grid-cols-2 gap-3">
-            <label class="text-xs text-gray-500">Home squad · one player per line<textarea v-model="matchForm.home_squad_text" rows="8" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-visa focus:outline-none resize-y" /></label>
-            <label class="text-xs text-gray-500">Away squad · one player per line<textarea v-model="matchForm.away_squad_text" rows="8" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-visa focus:outline-none resize-y" /></label>
+            <label class="text-xs text-gray-500">Home squad · one player per line<textarea v-model="matchForm.home_squad_text" rows="8" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-discmen focus:outline-none resize-y" /></label>
+            <label class="text-xs text-gray-500">Away squad · one player per line<textarea v-model="matchForm.away_squad_text" rows="8" required class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-discmen focus:outline-none resize-y" /></label>
           </div>
           <div class="grid sm:grid-cols-2 gap-3">
-            <label class="text-xs text-gray-500">Kick-off<input v-model="matchForm.kickoff_at" type="datetime-local" class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-visa focus:outline-none" /></label>
-            <label class="text-xs text-gray-500">Venue<input v-model="matchForm.venue" class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-visa focus:outline-none" /></label>
+            <label class="text-xs text-gray-500">Kick-off<input v-model="matchForm.kickoff_at" type="datetime-local" class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-discmen focus:outline-none" /></label>
+            <label class="text-xs text-gray-500">Venue<input v-model="matchForm.venue" class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-3 text-sm focus:border-discmen focus:outline-none" /></label>
           </div>
           <p v-if="matchConfigMessage" class="text-sm" :class="matchConfigError ? 'text-red-500' : 'text-green-600'">{{ matchConfigMessage }}</p>
-          <button type="submit" :disabled="matchConfigSaving" class="w-full bg-visa text-white font-bold py-3.5 rounded-xl disabled:opacity-50">
+          <button type="submit" :disabled="matchConfigSaving" class="w-full bg-discmen text-white font-bold py-3.5 rounded-xl disabled:opacity-50">
             {{ matchConfigSaving ? 'Saving…' : 'Save match configuration' }}
           </button>
         </form>
@@ -231,13 +237,28 @@
 
       <!-- ── Question Bank ───────────────────────────────────────────────── -->
       <section v-show="adminSection === 'questions'" class="bg-white rounded-2xl shadow p-4 sm:p-5">
-        <RoundManager @changed="loadQuestions" />
+        <TriviaCategoryManager :refresh-key="categoryRevision" @changed="onCategoriesChanged" />
+        <RoundManager :refresh-key="questionRevision + categoryRevision" @changed="loadQuestions" @add-question="openAddQuestion" />
         <div class="flex items-center justify-between mb-3 sm:mb-4">
           <h2 class="font-semibold text-gray-600 text-xs uppercase tracking-widest">Question Bank</h2>
-          <button @click="openAddQuestion"
-            class="bg-visa text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-visa transition active:scale-95">
+          <button @click="openAddQuestion()"
+            class="bg-discmen text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-discmen transition active:scale-95">
             + Add Question
           </button>
+        </div>
+
+        <div class="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <label class="relative">
+            <span class="sr-only">Search questions</span>
+            <input v-model.trim="questionSearch" type="search" placeholder="Search question text…"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-discmen focus:bg-white focus:outline-none" />
+          </label>
+          <select v-model="activeRound" aria-label="Filter questions by round"
+            class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-600 focus:border-discmen focus:outline-none">
+            <option value="all">Every round</option>
+            <option value="unassigned">Unassigned bank</option>
+            <option v-for="round in questionRounds" :key="round.id" :value="String(round.id)">Round {{ round.position }} · {{ round.title }}</option>
+          </select>
         </div>
 
         <!-- Category filter pills -->
@@ -254,7 +275,7 @@
         </div>
 
         <div v-if="filteredQuestions.length === 0" class="text-gray-400 text-sm text-center py-8">
-          No questions yet — add the first one.
+          {{ questions.length ? 'No questions match these filters.' : 'No questions yet — add the first one.' }}
         </div>
 
         <div v-else class="space-y-2 sm:space-y-3">
@@ -281,7 +302,7 @@
                 </span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
                   :class="categoryMeta[q.category]?.badgeClass ?? 'bg-gray-100 text-gray-500'">
-                  {{ categoryMeta[q.category]?.short ?? q.category }}
+                  {{ categoryMeta[q.category]?.short ?? q.category_name ?? categoryLabel(q.category) }}
                 </span>
                 <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs">
                   {{ q.type === 'multiple_choice' ? 'MC' : 'T/F' }}
@@ -289,7 +310,7 @@
                 <label class="inline-flex items-center gap-1 text-xs text-gray-500" title="Question countdown">
                   Timer
                   <select :value="q.duration_seconds" @change="updateQuestionDuration(q, $event)"
-                    class="border border-gray-200 rounded-lg bg-white px-1.5 py-1 text-xs font-semibold text-gray-700 focus:border-visa focus:outline-none">
+                    class="border border-gray-200 rounded-lg bg-white px-1.5 py-1 text-xs font-semibold text-gray-700 focus:border-discmen focus:outline-none">
                     <option v-for="seconds in durationOptions" :key="seconds" :value="seconds">{{ seconds }}s</option>
                   </select>
                 </label>
@@ -310,7 +331,7 @@
               <div class="flex gap-1.5 flex-shrink-0">
                 <button v-if="q.status === 'draft'"
                   @click="activateQuestion(q)" title="Go Live"
-                  class="bg-visa text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-visa transition active:scale-95">
+                  class="bg-discmen text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-discmen transition active:scale-95">
                   ▶ Live
                 </button>
                 <button v-if="q.status === 'live'"
@@ -357,13 +378,13 @@
             <div class="flex-1 text-center">
               <label class="block text-xs text-gray-400 mb-1">Home goals · 90 min + stoppage</label>
               <input v-model.number="result.score_home" type="number" min="0" max="20" required
-                class="w-full border rounded-xl px-3 py-3 text-center text-2xl font-bold focus:outline-none focus:border-visa" />
+                class="w-full border rounded-xl px-3 py-3 text-center text-2xl font-bold focus:outline-none focus:border-discmen" />
             </div>
             <span class="text-gray-400 text-2xl font-bold mt-5">–</span>
             <div class="flex-1 text-center">
               <label class="block text-xs text-gray-400 mb-1">Away goals · 90 min + stoppage</label>
               <input v-model.number="result.score_away" type="number" min="0" max="20" required
-                class="w-full border rounded-xl px-3 py-3 text-center text-2xl font-bold focus:outline-none focus:border-visa" />
+                class="w-full border rounded-xl px-3 py-3 text-center text-2xl font-bold focus:outline-none focus:border-discmen" />
             </div>
           </div>
 
@@ -371,10 +392,10 @@
             <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Half-time score</p>
             <div class="flex items-center gap-4">
               <input v-model.number="result.halftime_score_home" type="number" min="0" :max="result.score_home" required aria-label="Home half-time goals"
-                class="min-w-0 flex-1 rounded-xl border px-3 py-3 text-center text-xl font-bold focus:border-visa focus:outline-none" />
+                class="min-w-0 flex-1 rounded-xl border px-3 py-3 text-center text-xl font-bold focus:border-discmen focus:outline-none" />
               <span class="font-bold text-gray-400">–</span>
               <input v-model.number="result.halftime_score_away" type="number" min="0" :max="result.score_away" required aria-label="Away half-time goals"
-                class="min-w-0 flex-1 rounded-xl border px-3 py-3 text-center text-xl font-bold focus:border-visa focus:outline-none" />
+                class="min-w-0 flex-1 rounded-xl border px-3 py-3 text-center text-xl font-bold focus:border-discmen focus:outline-none" />
             </div>
           </div>
 
@@ -382,7 +403,7 @@
             <div>
               <label class="block text-xs text-gray-400 mb-1">Which team scored first?</label>
               <select v-model="result.first_scoring_team" required
-                class="w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-visa">
+                class="w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-discmen">
                 <option value="" disabled>Select result…</option>
                 <option value="home">{{ matchForm.home_team }}</option>
                 <option value="away">{{ matchForm.away_team }}</option>
@@ -393,7 +414,7 @@
               <label class="block text-xs text-gray-400 mb-1">Which player scored first?</label>
               <select v-model="result.scorer" :required="result.first_scoring_team !== 'none'"
                 :disabled="!result.first_scoring_team || result.first_scoring_team === 'none'"
-                class="w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-visa disabled:bg-gray-100 disabled:text-gray-400">
+                class="w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-discmen disabled:bg-gray-100 disabled:text-gray-400">
                 <option value="">{{ result.first_scoring_team === 'none' ? 'No goalscorer' : 'Select player…' }}</option>
                 <option v-for="p in resultScorerList" :key="p" :value="p">{{ p }}</option>
               </select>
@@ -401,7 +422,7 @@
             <div>
               <label class="block text-xs text-gray-400 mb-1">Player of the Match</label>
               <select v-model="result.potm"
-                class="w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-visa">
+                class="w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-discmen">
                 <option value="">TBD — resolve later</option>
                 <option v-for="p in squadList" :key="p" :value="p">{{ p }}</option>
               </select>
@@ -420,32 +441,12 @@
         </form>
       </section>
 
-      <!-- ── Display Settings ────────────────────────────────────────────── -->
-      <section v-show="adminSection === 'display'" class="bg-white rounded-2xl shadow p-4 sm:p-5">
-        <h2 class="font-semibold text-gray-600 mb-4 text-xs uppercase tracking-widest">Display Settings</h2>
-
-        <!-- QR Code -->
-        <div class="pt-4 flex items-center gap-4 sm:gap-6">
-          <div class="bg-white border rounded-xl p-2 shadow-sm flex-shrink-0">
-            <canvas ref="qrCanvas" width="100" height="100"></canvas>
-          </div>
-          <div class="min-w-0">
-            <p class="text-sm font-medium text-gray-700 mb-1">Player Registration QR</p>
-            <p class="text-xs text-gray-400 break-all">{{ appUrl }}</p>
-            <a :href="appUrl" target="_blank"
-              class="text-xs text-visa hover:underline mt-1 inline-block">
-              Open in new tab →
-            </a>
-          </div>
-        </div>
-      </section>
-
       <!-- ── Event Testing / Reset ──────────────────────────────────────── -->
       <section v-show="adminSection === 'testing'" id="event-test-tools" class="bg-white rounded-2xl shadow p-4 sm:p-5 scroll-mt-40">
         <div class="mb-4">
           <div class="flex items-start justify-between gap-3">
             <div><h2 class="font-semibold text-gray-600 text-xs uppercase tracking-widest">Event Test Tools</h2><p class="text-xs text-gray-400 mt-1">Load-test the screens safely, then remove test data without touching real attendees.</p></div>
-            <button @click="loadTestingStatus" class="text-xs font-bold text-visa">Refresh counts</button>
+            <button @click="loadTestingStatus" class="text-xs font-bold text-discmen">Refresh counts</button>
           </div>
         </div>
 
@@ -455,14 +456,14 @@
           </div>
         </div>
 
-        <div class="mb-4 overflow-hidden rounded-2xl border" :class="scoringRehearsal.passed === false ? 'border-red-300' : 'border-visa/20'">
+        <div class="mb-4 overflow-hidden rounded-2xl border" :class="scoringRehearsal.passed === false ? 'border-red-300' : 'border-discmen/20'">
           <div class="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3">
             <div>
               <p class="text-sm font-black text-gray-800">Scoring rehearsal <span v-if="scoringRehearsal.version" class="text-xs text-gray-400">v{{ scoringRehearsal.version }}</span></p>
               <p class="mt-0.5 text-xs text-gray-500">Read-only checks. No players, answers or predictions are changed.</p>
             </div>
             <button @click="runScoringRehearsal" :disabled="scoringRehearsal.loading"
-              class="shrink-0 rounded-xl bg-visa px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
+              class="shrink-0 rounded-xl bg-discmen px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
               {{ scoringRehearsal.loading ? 'Running…' : 'Run checks' }}
             </button>
           </div>
@@ -488,10 +489,10 @@
               <input v-model.number="testTools.count" type="number" min="1" max="200" aria-label="Number of simulated users"
                 class="min-w-0 flex-1 border border-gray-300 rounded-xl px-3 py-3 text-sm" />
               <button @click="simulateUsers" :disabled="testTools.busy"
-                class="bg-visa text-white px-4 rounded-xl text-sm font-bold disabled:opacity-50">Simulate</button>
+                class="bg-discmen text-white px-4 rounded-xl text-sm font-bold disabled:opacity-50">Simulate</button>
             </div>
             <label class="flex items-center gap-2 text-xs font-semibold text-gray-600">
-              <input v-model="testTools.includeAnswers" type="checkbox" class="accent-visa" /> Simulate trivia answers
+              <input v-model="testTools.includeAnswers" type="checkbox" class="accent-discmen" /> Simulate trivia answers
             </label>
             <div v-if="testTools.includeAnswers" class="grid grid-cols-2 gap-2">
               <label class="text-[11px] text-gray-500">Questions answered %
@@ -536,7 +537,7 @@
         <div class="mb-4"><h2 class="font-semibold text-gray-600 text-xs uppercase tracking-widest">Event Operations</h2><p class="text-xs text-gray-400 mt-1">Live status, recovery actions and audited score corrections.</p></div>
 
         <div class="grid grid-cols-3 gap-2 mb-4">
-          <div class="rounded-xl bg-gray-50 p-3 text-center"><p class="text-sm font-black uppercase text-visa">{{ phase?.replace(/_/g, ' ') }}</p><p class="text-[10px] text-gray-500">Current phase</p></div>
+          <div class="rounded-xl bg-gray-50 p-3 text-center"><p class="text-sm font-black uppercase text-discmen">{{ phase?.replace(/_/g, ' ') }}</p><p class="text-[10px] text-gray-500">Current phase</p></div>
           <div class="rounded-xl bg-gray-50 p-3 text-center"><p class="text-lg font-black text-gray-800">{{ playerCount }}</p><p class="text-[10px] text-gray-500">Players</p></div>
           <div class="rounded-xl bg-gray-50 p-3 text-center"><p class="text-lg font-black text-gray-800">{{ predictionCount }}</p><p class="text-[10px] text-gray-500">Predictions</p></div>
         </div>
@@ -648,7 +649,9 @@
         <h3 class="font-bold text-lg mb-4">{{ editingQuestion?.id ? 'Edit' : 'Add' }} Question</h3>
         <QuestionForm
           :initial="editingQuestion"
+          :initial-round-id="addingToRoundId"
           @saved="onQuestionSaved"
+          @categories-changed="onCategoriesChanged"
           @cancel="showModal = false" />
       </div>
     </div>
@@ -661,9 +664,9 @@
         class="w-full rounded-t-3xl bg-white p-6 pb-safe shadow-2xl sm:max-w-md sm:rounded-2xl sm:p-7">
         <div class="mx-auto mb-5 h-1 w-10 rounded-full bg-gray-200 sm:hidden"></div>
         <div class="mb-5 flex items-start gap-4">
-          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-visa/10 text-xl" aria-hidden="true">⇄</span>
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-discmen/10 text-xl" aria-hidden="true">⇄</span>
           <div>
-            <p class="text-xs font-black uppercase tracking-[.18em] text-visa">Confirm phase change</p>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-discmen">Confirm phase change</p>
             <h2 id="phase-dialog-title" class="mt-1 text-xl font-black text-gray-900">
               Switch to “{{ phaseLabel(phaseDialog.target) }}”?
             </h2>
@@ -706,7 +709,7 @@
             Cancel
           </button>
           <button type="button" @click="confirmPhaseChange" :disabled="phaseDialog.saving"
-            class="min-h-12 rounded-xl bg-visa px-4 font-black text-white transition hover:bg-visa/90 disabled:opacity-50">
+            class="min-h-12 rounded-xl bg-discmen px-4 font-black text-white transition hover:bg-discmen/90 disabled:opacity-50">
             {{ phaseDialog.saving ? 'Switching…' : 'Switch phase' }}
           </button>
         </div>
@@ -721,9 +724,9 @@
         class="w-full rounded-t-3xl bg-white p-6 pb-safe shadow-2xl sm:max-w-lg sm:rounded-2xl sm:p-7">
         <div class="mx-auto mb-5 h-1 w-10 rounded-full bg-gray-200 sm:hidden"></div>
         <div class="mb-5 flex items-start gap-4">
-          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-visa/10 text-xl text-visa" aria-hidden="true">▶</span>
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-discmen/10 text-xl text-discmen" aria-hidden="true">▶</span>
           <div>
-            <p class="text-xs font-black uppercase tracking-[.18em] text-visa">Confirm live question</p>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-discmen">Confirm live question</p>
             <h2 id="question-live-dialog-title" class="mt-1 text-xl font-black text-gray-900">Send this question live?</h2>
           </div>
         </div>
@@ -750,7 +753,7 @@
                 ? 'border-green-500 bg-green-50 text-green-900 ring-2 ring-green-500/20'
                 : 'border-gray-200 bg-white text-gray-700'">
               <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black"
-                :class="option === questionDialog.question.correct_answer ? 'bg-green-600 text-white' : 'bg-visa/10 text-visa'">
+                :class="option === questionDialog.question.correct_answer ? 'bg-green-600 text-white' : 'bg-discmen/10 text-discmen'">
                 {{ ['A', 'B', 'C', 'D'][index] }}
               </span>
               <span class="min-w-0 flex-1 break-words" :class="option === questionDialog.question.correct_answer ? 'font-bold' : ''">
@@ -777,7 +780,7 @@
             Cancel
           </button>
           <button type="button" @click="confirmQuestionActivation" :disabled="questionDialog.saving"
-            class="min-h-12 rounded-xl bg-visa px-4 font-black text-white transition hover:bg-visa/90 disabled:opacity-50">
+            class="min-h-12 rounded-xl bg-discmen px-4 font-black text-white transition hover:bg-discmen/90 disabled:opacity-50">
             {{ questionDialog.saving ? 'Going live…' : '▶ Go live now' }}
           </button>
         </div>
@@ -790,15 +793,14 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
-import QRCode from 'qrcode'
 import { useEventState } from '../../composables/useEventState'
 import QuestionForm from './QuestionForm.vue'
 import PlayerReview from './PlayerReview.vue'
 import RoundManager from './RoundManager.vue'
+import TriviaCategoryManager from './TriviaCategoryManager.vue'
 
 const { phase, question: stateQuestion, playerCount, predictionCount, fetchState } = useEventState()
 
-const qrCanvas  = ref(null)
 const appUrl    = document.querySelector('meta[name="app-url"]')?.content ?? window.location.origin
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? ''
 const logoutUrl = appUrl + '/admin/logout'
@@ -812,12 +814,6 @@ async function goToTestTools() {
   document.getElementById('event-test-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-onMounted(() => {
-  if (qrCanvas.value) {
-    QRCode.toCanvas(qrCanvas.value, appUrl, { width: 100, margin: 1 })
-  }
-})
-
 const activeTab = ref('admin')
 const adminSection = ref('phase')
 const adminSections = [
@@ -825,7 +821,6 @@ const adminSections = [
   { id: 'players', label: 'Players', icon: '👥' },
   { id: 'match', label: 'Match', icon: '⚽' },
   { id: 'questions', label: 'Questions', icon: '?' },
-  { id: 'display', label: 'Display', icon: '▣' },
   { id: 'testing', label: 'Testing', icon: '◈' },
   { id: 'operations', label: 'Operations', icon: '!' },
   { id: 'audit', label: 'Audit', icon: '≡' },
@@ -859,28 +854,45 @@ const countdownSaving = ref(false)
 const countdownMessage = ref('')
 const countdownError = ref(false)
 const editingQuestion = ref(null)
+const addingToRoundId = ref(null)
+const questionRevision = ref(0)
+const categoryRevision = ref(0)
 
 const activeCategory = ref('all')
+const activeRound = ref('all')
+const questionSearch = ref('')
 
 const categoryMeta = {
   general_knowledge: { short: 'General',  badgeClass: 'bg-gray-200 text-gray-700' },
   fifa_world_cup:    { short: 'FIFA ⚽',   badgeClass: 'bg-blue-100 text-blue-700' },
-  visa:              { short: 'Visa',      badgeClass: 'bg-indigo-100 text-indigo-700' },
 }
 
-const categoryFilters = [
-  { value: 'all',               label: 'All',      activeClass: 'bg-gray-800 text-white' },
-  { value: 'general_knowledge', label: 'General',  activeClass: 'bg-gray-500 text-white' },
-  { value: 'fifa_world_cup',    label: 'FIFA ⚽',   activeClass: 'bg-blue-500 text-white' },
-  { value: 'visa',              label: 'Visa',     activeClass: 'bg-indigo-500 text-white' },
-]
+const categoryFilters = computed(() => [
+  { value: 'all', label: 'All', activeClass: 'bg-gray-800 text-white' },
+  ...[...new Set(questions.value.map(question => question.category).filter(Boolean))].map(value => ({
+    value,
+    label: questions.value.find(question => question.category === value)?.category_name ?? categoryLabel(value),
+    activeClass: categoryMeta[value]?.activeClass ?? 'bg-discmen text-white',
+  })),
+])
 const durationOptions = [5, 10, 15, 20, 30, 45, 60, 90, 120]
 
-const filteredQuestions = computed(() =>
-  activeCategory.value === 'all'
-    ? questions.value
-    : questions.value.filter(q => q.category === activeCategory.value)
-)
+const questionRounds = computed(() => {
+  const unique = new Map()
+  questions.value.forEach(question => {
+    if (question.trivia_round) unique.set(question.trivia_round.id, question.trivia_round)
+  })
+  return [...unique.values()].sort((a, b) => a.position - b.position)
+})
+const filteredQuestions = computed(() => {
+  const search = questionSearch.value.toLocaleLowerCase()
+  return questions.value.filter(question => {
+    if (activeCategory.value !== 'all' && question.category !== activeCategory.value) return false
+    if (activeRound.value === 'unassigned' && question.trivia_round_id) return false
+    if (!['all', 'unassigned'].includes(activeRound.value) && String(question.trivia_round_id) !== activeRound.value) return false
+    return !search || question.text.toLocaleLowerCase().includes(search)
+  })
+})
 
 const nextAction = computed(() => ({
   lobby:              { phase: 'predictions_open', label: 'Open predictions', help: 'Players can submit their match predictions.' },
@@ -899,6 +911,11 @@ function categoryCount(cat) {
     : questions.value.filter(q => q.category === cat).length
 }
 
+function categoryLabel(category) {
+  return ({ fifa_world_cup: 'Football ⚽', general_knowledge: 'General' })[category]
+    ?? String(category).replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
 const phases = [
   { value: 'lobby',              label: 'Lobby' },
   { value: 'predictions_open',   label: 'Open Predictions' },
@@ -915,7 +932,7 @@ const phaseColors = {
   trivia_reveal:      'bg-purple-100 text-purple-700',
   trivia_complete:    'bg-purple-200 text-purple-800',
   match_ended:        'bg-yellow-100 text-yellow-700',
-  prediction_reveal:  'bg-visa/10 text-visa',
+  prediction_reveal:  'bg-discmen/10 text-discmen',
 }
 
 const result           = reactive({ score_home: 0, score_away: 0, halftime_score_home: 0, halftime_score_away: 0, first_scoring_team: 'none', scorer: '', potm: '' })
@@ -1162,8 +1179,8 @@ function auditLabel(action) {
 function auditDotClass(action) {
   if (action.includes('invalidated')) return 'bg-red-500'
   if (action.includes('adjusted')) return 'bg-amber-500'
-  if (action.includes('revealed') || action.includes('resolved')) return 'bg-visa-gold'
-  return 'bg-visa'
+  if (action.includes('revealed') || action.includes('resolved')) return 'bg-discmen-accent'
+  return 'bg-discmen'
 }
 
 function formatAuditTime(value) {
@@ -1301,21 +1318,29 @@ async function deleteQuestion(q) {
   if (!confirm(`Delete:\n"${q.text.slice(0, 80)}"`)) return
   await axios.delete(`/api/admin/questions/${q.id}`)
   await loadQuestions()
+  questionRevision.value++
 }
 
-function openAddQuestion() {
+function openAddQuestion(round = null) {
   editingQuestion.value = null
+  addingToRoundId.value = round?.id ?? null
   showModal.value = true
 }
 
 function editQuestion(q) {
   editingQuestion.value = q
+  addingToRoundId.value = null
   showModal.value = true
 }
 
-async function onQuestionSaved() {
-  showModal.value = false
+async function onQuestionSaved(result = {}) {
+  if (!result.keepOpen) showModal.value = false
   await loadQuestions()
+  questionRevision.value++
+}
+
+function onCategoriesChanged() {
+  categoryRevision.value++
 }
 
 async function submitMatchResult() {

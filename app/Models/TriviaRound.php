@@ -25,9 +25,9 @@ class TriviaRound extends Model
         if (self::exists()) return;
 
         $rounds = [
-            [1, 'Visa Smart Play', 'visa', 'Start strong with smart, simple Visa knowledge.'],
+            [1, 'Quick Fire', 'general_knowledge', 'Start strong with sharp instincts and fast general-knowledge answers.'],
             [2, 'Football IQ', 'fifa_world_cup', 'Read the game, trust your football instincts, and climb.'],
-            [3, 'Visa Final Whistle', null, 'Visa and football collide in the high-energy final round.'],
+            [3, 'Final Whistle', null, 'Bring everything together in the high-energy final round.'],
         ];
 
         foreach ($rounds as [$position, $title, $category, $intro]) {

@@ -1,4 +1,4 @@
-# Visa Final Whistle Event Readiness Runbook
+# Discmen Final Whistle Event Readiness Runbook
 
 This document separates what is safe today from work that should be completed before a high-attendance production event.
 
@@ -16,11 +16,11 @@ This document separates what is safe today from work that should be completed be
 
 Round mode is optional and the original flat question flow remains available. When enabled in **Admin → Questions → Trivia Round Manager**, the default structure is:
 
-1. **Visa Smart Play** — four Visa questions.
+1. **Quick Fire** — four general-knowledge questions.
 2. **Football IQ** — four football questions.
-3. **Visa Final Whistle** — four mixed Visa and football questions.
+3. **Final Whistle** — four mixed general and football questions.
 
-Each round must have exactly one clearly marked Visa Power Question before it can start. Start the round introduction first, then take its assigned questions live in order. Reveal or skip every assigned question before selecting **Complete round & show winner**. Streaks reset between rounds; round points still add directly to the overall trivia total, and equal results share rank.
+Each round must have exactly one clearly marked Power Question before it can start. Start the round introduction first, then take its assigned questions live in order. Reveal or skip every assigned question before selecting **Complete round & show winner**. Streaks reset between rounds; round points still add directly to the overall trivia total, and equal results share rank.
 
 Never reset the event, force-edit squads, invalidate a question, or restart a live timer without the MC and technical operator agreeing verbally.
 
@@ -131,7 +131,7 @@ The harness automatically uses twice the stated attendance (`200` users above). 
 Override the target or thresholds when needed:
 
 ```bash
-LOAD_TEST_URL=http://mpesa-visa.ddev.site npm run load:test -- --users=300 --duration=60 --p95-ms=750 --p99-ms=1500
+LOAD_TEST_URL=https://discmen-final-whistle.ddev.site npm run load:test -- --users=300 --duration=60 --p95-ms=750 --p99-ms=1500
 ```
 
 ### Authenticated write load test

@@ -2,13 +2,13 @@
   <div class="mb-5 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white">
     <div class="flex flex-col gap-3 border-b border-indigo-100 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p class="text-xs font-black uppercase tracking-widest text-visa">Three-round experience</p>
+        <p class="text-xs font-black uppercase tracking-widest text-discmen">Three-round experience</p>
         <h3 class="mt-1 text-lg font-black text-gray-900">Trivia Round Manager</h3>
         <p class="mt-1 max-w-2xl text-xs leading-relaxed text-gray-500">Create three mini-events, reset streaks fairly at each round, and celebrate a round champion before the overall winner.</p>
       </div>
       <button type="button" @click="toggleMode" :disabled="busy"
         class="min-w-36 rounded-xl px-4 py-3 text-sm font-black transition disabled:opacity-50"
-        :class="enabled ? 'bg-visa text-white' : 'border border-gray-300 bg-white text-gray-700'">
+        :class="enabled ? 'bg-discmen text-white' : 'border border-gray-300 bg-white text-gray-700'">
         {{ busy ? 'Saving…' : enabled ? 'Round mode ON' : 'Enable round mode' }}
       </button>
     </div>
@@ -22,7 +22,7 @@
           :class="round.status === 'live' ? 'border-green-400 ring-2 ring-green-100' : round.status === 'completed' ? 'border-indigo-300' : 'border-gray-200'">
           <div class="border-b border-gray-100 p-4">
             <div class="mb-3 flex items-center justify-between gap-2">
-              <span class="rounded-full bg-visa px-2.5 py-1 text-xs font-black text-white">ROUND {{ round.position }}</span>
+              <span class="rounded-full bg-discmen px-2.5 py-1 text-xs font-black text-white">ROUND {{ round.position }}</span>
               <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase"
                 :class="round.status === 'live' ? 'bg-green-100 text-green-700' : round.status === 'completed' ? 'bg-indigo-100 text-indigo-700' : round.ready ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
                 {{ round.status === 'draft' ? (round.ready ? 'ready' : 'needs review') : round.status }}
@@ -33,10 +33,8 @@
                 class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-black text-gray-900 disabled:bg-gray-50" />
               <select v-model="round.category" :disabled="round.status !== 'draft'" aria-label="Round theme"
                 class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold disabled:bg-gray-50">
-                <option :value="null">Mixed Visa + football</option>
-                <option value="visa">Visa</option>
-                <option value="fifa_world_cup">Football</option>
-                <option value="general_knowledge">General knowledge</option>
+                <option :value="null">Mixed categories</option>
+                <option v-for="category in categories" :key="category.id" :value="category.key">{{ category.name }}</option>
               </select>
               <textarea v-model="round.intro_message" :disabled="round.status !== 'draft'" rows="2" maxlength="180" aria-label="Round introduction"
                 class="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 disabled:bg-gray-50" />
@@ -46,13 +44,17 @@
           </div>
 
           <div class="space-y-2 p-3">
+            <button v-if="['draft', 'live'].includes(round.status)" type="button" @click="emit('add-question', round)" :disabled="busy"
+              class="w-full rounded-xl border border-dashed border-discmen/30 bg-discmen/5 px-3 py-2.5 text-xs font-black text-discmen transition hover:border-discmen hover:bg-discmen/10 disabled:opacity-40">
+              {{ round.status === 'live' ? '+ Add a new next question' : '+ Create a question in this round' }}
+            </button>
             <div v-if="!round.questions.length" class="rounded-xl border border-dashed border-gray-300 px-3 py-7 text-center text-xs text-gray-400">Assign questions below.</div>
             <div v-for="(question, index) in round.questions" :key="question.id" class="rounded-xl border p-3"
               :class="question.status === 'live' ? 'border-green-400 bg-green-50 ring-1 ring-green-200' : 'border-gray-100 bg-gray-50'">
               <div class="flex items-start gap-2">
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-gray-500">{{ index + 1 }}</span>
                 <p class="min-w-0 flex-1 text-xs font-semibold leading-snug text-gray-700">{{ question.text }}</p>
-                <span v-if="question.is_double_points" title="Visa Power Question" class="shrink-0 text-sm">⚡</span>
+                <span v-if="question.is_double_points" title="Power Question" class="shrink-0 text-sm">⚡</span>
                 <span v-if="round.status !== 'draft' && question.status === 'live'" class="shrink-0 rounded-full bg-green-600 px-2 py-0.5 text-[9px] font-black uppercase text-white">● Live</span>
                 <span v-else-if="round.status !== 'draft' && question.status === 'closed'" class="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase text-blue-700">Revealed</span>
                 <span v-else-if="round.status !== 'draft' && question.status === 'skipped'" class="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[9px] font-black uppercase text-gray-500">Skipped</span>
@@ -105,7 +107,7 @@
           <div class="mb-3 flex flex-wrap gap-2">
             <button v-for="tab in categoryTabs" :key="tab.key" type="button" @click="categoryFilter = tab.key"
               class="rounded-full px-3 py-1.5 text-xs font-bold transition"
-              :class="categoryFilter === tab.key ? 'bg-visa text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+              :class="categoryFilter === tab.key ? 'bg-discmen text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
               {{ tab.label }} ({{ countFor(tab.key) }})
             </button>
           </div>
@@ -115,7 +117,9 @@
               <select :value="''" @change="assign(question, Number($event.target.value)); $event.target.value = ''" :disabled="busy"
                 aria-label="Assign question to round" class="rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs font-bold text-gray-700">
                 <option value="">Assign…</option>
-                <option v-for="round in draftRounds" :key="round.id" :value="round.id">Round {{ round.position }}</option>
+                <option v-for="round in assignableRounds" :key="round.id" :value="round.id">
+                  Round {{ round.position }}{{ round.status === 'live' ? ' · live' : '' }}
+                </option>
               </select>
             </div>
           </div>
@@ -128,25 +132,28 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from 'axios'
 
-const emit = defineEmits(['changed'])
+const props = defineProps({
+  refreshKey: { type: Number, default: 0 },
+})
+const emit = defineEmits(['changed', 'add-question'])
 const enabled = ref(false)
 const rounds = ref([])
 const unassigned = ref([])
+const categories = ref([])
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
-const draftRounds = computed(() => rounds.value.filter(round => round.status === 'draft'))
+const assignableRounds = computed(() => rounds.value.filter(round => ['draft', 'live'].includes(round.status)))
 
 // Unassigned-bank category filter for quick selection.
-const categoryTabs = [
+const categoryTabs = computed(() => [
   { key: 'all', label: 'All' },
-  { key: 'general_knowledge', label: 'General' },
-  { key: 'fifa_world_cup', label: 'FIFA ⚽' },
-  { key: 'visa', label: 'Visa' },
-]
+  ...[...new Set(unassigned.value.map(question => question.category).filter(Boolean))]
+    .map(key => ({ key, label: categoryLabel(key) })),
+])
 const categoryFilter = ref('all')
 const countFor = (key) => key === 'all'
   ? unassigned.value.length
@@ -166,11 +173,13 @@ onMounted(() => {
   }, 2500)
 })
 onUnmounted(() => clearInterval(poll))
+watch(() => props.refreshKey, load)
 
 function apply(data) {
   enabled.value = Boolean(data.enabled)
   rounds.value = data.rounds ?? []
   unassigned.value = data.unassigned ?? []
+  categories.value = data.categories ?? []
 }
 
 async function load() {
@@ -234,6 +243,10 @@ function skipInRound(round) {
     run(() => axios.post(`/api/admin/questions/${target.id}/skip`), 'Question skipped.')
   }
 }
-function categoryLabel(category) { return ({ visa: 'Visa', fifa_world_cup: 'Football', general_knowledge: 'General' })[category] ?? 'Mixed' }
+function categoryLabel(category) {
+  return categories.value.find(item => item.key === category)?.name
+    ?? ({ fifa_world_cup: 'Football', general_knowledge: 'General' })[category]
+    ?? String(category || 'Mixed').replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+}
 function formatDuration(seconds) { const minutes = Math.floor(seconds / 60); const rest = seconds % 60; return minutes ? `${minutes}m ${rest}s` : `${rest}s` }
 </script>

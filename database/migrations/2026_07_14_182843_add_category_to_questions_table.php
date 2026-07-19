@@ -15,7 +15,6 @@ return new class extends Migration
             $table->enum('category', [
                 'general_knowledge',
                 'fifa_world_cup',
-                'visa',
             ])->default('general_knowledge')->after('order_index');
         });
     }

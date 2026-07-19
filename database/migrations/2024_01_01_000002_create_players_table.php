@@ -13,7 +13,6 @@ return new class extends Migration {
             $table->string('nickname', 50);
             $table->string('email', 100)->nullable();
             $table->boolean('consent')->default(false);
-            $table->boolean('has_visa_card')->default(false);
             $table->integer('trivia_score')->default(0);
             $table->integer('trivia_streak')->default(0);        // current consecutive correct
             $table->integer('trivia_correct_count')->default(0); // total correct, for tie-break

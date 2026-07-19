@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('players', function (Blueprint $table) {
-            $table->boolean('is_simulated')->default(false)->index()->after('has_visa_card');
+            $table->boolean('is_simulated')->default(false)->index()->after('consent');
         });
     }
 

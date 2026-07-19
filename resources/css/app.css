@@ -22,12 +22,13 @@
 }
 
 :root {
-  --visa-blue: #1a1f71;
-  --visa-blue-bright: #1434cb;
-  --visa-gold: #f7b600;
-  --visa-ink: #070b2a;
-  --visa-surface: #10164d;
-  --visa-line: rgba(255, 255, 255, 0.12);
+  --discmen-primary: #147783;
+  --discmen-accent: #61c8d2;
+  --discmen-ink: #100f0d;
+  --discmen-surface: #173f44;
+  --discmen-line: rgba(255, 255, 255, 0.12);
+  --discmen-cyan: #61c8d2;
+  --discmen-black: #100f0d;
 }
 
 html { scroll-behavior: smooth; }
@@ -35,7 +36,7 @@ body {
   margin: 0;
   font-family: 'Outfit', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-weight: 350;
-  background: var(--visa-ink);
+  background: var(--discmen-ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -44,7 +45,7 @@ button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 
 *:focus-visible {
-  outline: 3px solid rgba(247, 182, 0, .55);
+  outline: 3px solid rgba(97, 200, 210, .62);
   outline-offset: 3px;
 }
 
@@ -52,13 +53,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .event-surface {
     position: relative;
     isolation: isolate;
-    background-color: var(--visa-ink);
+    background-color: var(--discmen-ink);
     background-image:
-      linear-gradient(180deg, rgba(7, 11, 42, .92), rgba(16, 22, 77, .84)),
-      url('/images/backgrounds/event-portrait-visa.png');
+      linear-gradient(180deg, rgba(8, 13, 13, .84) 0%, rgba(13, 45, 48, .72) 42%, rgba(8, 11, 10, .94) 100%),
+      url('/images/backgrounds/discmen.jpeg');
     background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+    background-position: center top;
+    background-repeat: no-repeat;
   }
 
   .event-surface::before {
@@ -67,18 +68,54 @@ button, a { -webkit-tap-highlight-color: transparent; }
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background: radial-gradient(circle at 50% 12%, rgba(20, 52, 203, .25), transparent 38%);
+    background:
+      radial-gradient(circle at 10% 14%, rgba(97, 200, 210, .25), transparent 31%),
+      radial-gradient(circle at 88% 18%, rgba(255, 255, 255, .1), transparent 29%),
+      linear-gradient(135deg, rgba(20, 119, 131, .16), transparent 42%);
+  }
+
+  .event-surface::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .16;
+    background-image:
+      repeating-linear-gradient(115deg, transparent 0 72px, rgba(255, 255, 255, .07) 73px, transparent 74px),
+      linear-gradient(180deg, transparent 68%, rgba(97, 200, 210, .1));
+    mix-blend-mode: screen;
   }
 
   .glass-card {
-    background: linear-gradient(145deg, rgba(16, 22, 77, .94), rgba(7, 11, 42, .96));
-    border: 1px solid var(--visa-line);
-    box-shadow: 0 28px 70px rgba(0, 0, 0, .34);
-    backdrop-filter: blur(16px);
+    background: linear-gradient(145deg, rgba(23, 63, 68, .92), rgba(10, 12, 11, .96));
+    border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 28px 70px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .08);
+    backdrop-filter: blur(18px) saturate(125%);
+  }
+
+  /* Protected client-logo surface: prevents photos and phase overlays from
+     reducing the visibility of the supplied Discmen mark. */
+  .discmen-logo-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .3rem;
+    overflow: hidden;
+    border: 1px solid rgba(97, 200, 210, .34);
+    border-radius: .7rem;
+    background: rgba(16, 15, 13, .94);
+    box-shadow: 0 9px 26px rgba(0, 0, 0, .32), inset 0 0 18px rgba(97, 200, 210, .06);
+  }
+
+  .discmen-logo-tile > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .brand-kicker {
-    color: var(--visa-gold);
+    color: var(--discmen-accent);
     font-size: .75rem;
     font-weight: 550;
     letter-spacing: .16em;
@@ -97,17 +134,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .field-control:hover { border-color: rgba(255,255,255,.24); }
   .field-control:focus {
     outline: none;
-    border-color: var(--visa-gold);
+    border-color: var(--discmen-accent);
     background: rgba(0,0,0,.38);
-    box-shadow: 0 0 0 4px rgba(247,182,0,.13);
+    box-shadow: 0 0 0 4px rgba(97,200,210,.15);
   }
 }
 
 @media (min-width: 900px) {
   .event-surface {
     background-image:
-      linear-gradient(90deg, rgba(7, 11, 42, .94) 0%, rgba(16, 22, 77, .8) 48%, rgba(20, 52, 203, .22) 100%),
-      url('/images/backgrounds/event-landscape-visa.png');
+      linear-gradient(90deg, rgba(8, 12, 11, .94) 0%, rgba(15, 48, 52, .74) 48%, rgba(10, 27, 28, .56) 100%),
+      linear-gradient(180deg, rgba(7, 10, 9, .54), transparent 58%, rgba(7, 10, 9, .76)),
+      url('/images/backgrounds/discmenbg.jpeg');
     background-position: center;
   }
 }

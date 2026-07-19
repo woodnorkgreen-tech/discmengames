@@ -834,7 +834,7 @@ class EventReliabilityTest extends TestCase
     {
         [$player] = $this->player();
         $questions = collect([1, 2, 3])->map(fn ($order) => Question::create([
-            'order_index' => $order, 'category' => 'visa', 'type' => 'multiple_choice',
+            'order_index' => $order, 'category' => 'general_knowledge', 'type' => 'multiple_choice',
             'text' => "Question {$order}?", 'options' => ['Yes', 'No'], 'correct_answer' => 'Yes',
             'duration_seconds' => 30, 'status' => 'closed',
         ]));
@@ -860,8 +860,8 @@ class EventReliabilityTest extends TestCase
 
         $round = TriviaRound::orderBy('position')->firstOrFail();
         $question = Question::create([
-            'order_index' => 1, 'category' => 'visa', 'type' => 'multiple_choice',
-            'text' => 'Visa round question?', 'options' => ['Yes', 'No'], 'correct_answer' => 'Yes',
+            'order_index' => 1, 'category' => 'general_knowledge', 'type' => 'multiple_choice',
+            'text' => 'Quick-fire round question?', 'options' => ['Yes', 'No'], 'correct_answer' => 'Yes',
             'duration_seconds' => 30, 'is_double_points' => true, 'status' => 'draft',
         ]);
         $admin->putJson("/api/admin/questions/{$question->id}/round", ['round_id' => $round->id])
@@ -871,7 +871,7 @@ class EventReliabilityTest extends TestCase
         $this->getJson('/api/state')->assertOk()
             ->assertJsonPath('rounds_enabled', true)
             ->assertJsonPath('round.number', 1)
-            ->assertJsonPath('round.title', 'Visa Smart Play')
+            ->assertJsonPath('round.title', 'Quick Fire')
             ->assertJsonPath('round.status', 'live')
             ->assertJsonPath('question', null)
             ->assertJsonPath('question_progress.total', 1);
@@ -889,6 +889,148 @@ class EventReliabilityTest extends TestCase
             ->assertJsonPath('question', null);
     }
 
+    public function test_admin_can_create_client_questions_directly_inside_draft_and_live_rounds(): void
+    {
+        TriviaRound::createRecommended();
+        $round = TriviaRound::orderBy('position')->firstOrFail();
+        $admin = $this->withSession(['admin_logged_in' => true]);
+        $category = $admin->postJson('/api/admin/question-categories', ['name' => 'Music & Entertainment'])
+            ->assertCreated()
+            ->assertJsonPath('key', 'music_entertainment');
+        $payload = [
+            'trivia_round_id' => $round->id,
+            'category' => $category->json('key'),
+            'type' => 'multiple_choice',
+            'text' => 'Which instrument has 88 keys?',
+            'options' => ['Piano', 'Guitar', 'Violin', 'Drums'],
+            'correct_answer' => 'Piano',
+            'duration_seconds' => 20,
+            'is_double_points' => true,
+        ];
+
+        $first = $admin->postJson('/api/admin/questions', $payload)
+            ->assertCreated()
+            ->assertJsonPath('trivia_round_id', $round->id)
+            ->assertJsonPath('round_position', 1)
+            ->assertJsonPath('category', 'music_entertainment');
+
+        $second = $admin->postJson('/api/admin/questions', [
+            ...$payload,
+            'text' => 'Which artist recorded this event anthem?',
+            'correct_answer' => 'Guitar',
+        ])->assertCreated()->assertJsonPath('round_position', 2);
+
+        $this->assertFalse((bool) Question::findOrFail($first->json('id'))->is_double_points);
+        $this->assertTrue((bool) Question::findOrFail($second->json('id'))->is_double_points);
+
+        $round->update(['status' => 'live']);
+        $admin->postJson('/api/admin/questions', [
+            ...$payload,
+            'text' => 'A late client-supplied tie breaker?',
+            'is_double_points' => false,
+            'round_position' => 1,
+        ])->assertCreated()->assertJsonPath('round_position', 3);
+    }
+
+    public function test_admin_can_manage_reusable_question_categories_safely(): void
+    {
+        $this->getJson('/api/admin/question-categories')->assertUnauthorized();
+        $admin = $this->withSession(['admin_logged_in' => true]);
+
+        $category = $admin->postJson('/api/admin/question-categories', ['name' => 'Discmen Culture'])
+            ->assertCreated()
+            ->assertJsonPath('key', 'discmen_culture');
+        $categoryId = $category->json('id');
+
+        $admin->putJson("/api/admin/question-categories/{$categoryId}", ['name' => 'Discmen Entertainment'])
+            ->assertOk()
+            ->assertJsonPath('key', 'discmen_culture')
+            ->assertJsonPath('name', 'Discmen Entertainment');
+
+        $admin->postJson('/api/admin/questions', [
+            'category' => 'discmen_culture',
+            'type' => 'true_false',
+            'text' => 'A category-backed question?',
+            'options' => ['True', 'False'],
+            'correct_answer' => 'True',
+            'duration_seconds' => 15,
+            'is_double_points' => false,
+        ])->assertCreated();
+
+        $admin->deleteJson("/api/admin/question-categories/{$categoryId}")->assertStatus(422);
+        $systemCategory = \App\Models\TriviaCategory::where('key', 'general_knowledge')->firstOrFail();
+        $admin->deleteJson("/api/admin/question-categories/{$systemCategory->id}")->assertStatus(422);
+        $admin->postJson('/api/admin/questions', [
+            'category' => 'category_that_does_not_exist',
+            'type' => 'true_false',
+            'text' => 'Invalid category question?',
+            'options' => ['True', 'False'],
+            'correct_answer' => 'True',
+            'duration_seconds' => 15,
+            'is_double_points' => false,
+        ])->assertStatus(422);
+
+        $unused = $admin->postJson('/api/admin/question-categories', ['name' => 'Unused Category'])->assertCreated();
+        $admin->deleteJson('/api/admin/question-categories/'.$unused->json('id'))
+            ->assertOk()
+            ->assertJsonPath('deleted', true);
+    }
+
+    public function test_completed_rounds_and_live_power_question_changes_remain_protected(): void
+    {
+        TriviaRound::createRecommended();
+        $rounds = TriviaRound::orderBy('position')->get();
+        $rounds[0]->update(['status' => 'live']);
+        $rounds[1]->update(['status' => 'completed']);
+        $admin = $this->withSession(['admin_logged_in' => true]);
+        $payload = [
+            'category' => 'general_knowledge',
+            'type' => 'true_false',
+            'text' => 'Client supplied question?',
+            'options' => ['True', 'False'],
+            'correct_answer' => 'True',
+            'duration_seconds' => 15,
+            'is_double_points' => false,
+        ];
+
+        $admin->postJson('/api/admin/questions', [
+            ...$payload,
+            'trivia_round_id' => $rounds[1]->id,
+        ])->assertStatus(422);
+
+        $admin->postJson('/api/admin/questions', [
+            ...$payload,
+            'trivia_round_id' => $rounds[0]->id,
+            'is_double_points' => true,
+        ])->assertStatus(422);
+    }
+
+    public function test_moving_a_draft_question_between_rounds_normalizes_both_round_orders(): void
+    {
+        TriviaRound::createRecommended();
+        [$firstRound, $secondRound] = TriviaRound::orderBy('position')->take(2)->get();
+        $questions = collect([1, 2])->map(fn (int $position) => Question::create([
+            'order_index' => $position,
+            'trivia_round_id' => $firstRound->id,
+            'round_position' => $position,
+            'category' => 'general_knowledge',
+            'type' => 'true_false',
+            'text' => "Moveable question {$position}?",
+            'options' => ['True', 'False'],
+            'correct_answer' => 'True',
+            'duration_seconds' => 20,
+            'status' => 'draft',
+        ]));
+
+        $this->withSession(['admin_logged_in' => true])
+            ->putJson("/api/admin/questions/{$questions[0]->id}", ['trivia_round_id' => $secondRound->id])
+            ->assertOk()
+            ->assertJsonPath('trivia_round_id', $secondRound->id)
+            ->assertJsonPath('round_position', 1);
+
+        $this->assertSame(1, $questions[1]->fresh()->round_position);
+    }
+
     public function test_streak_resets_between_rounds_and_round_standings_are_independent(): void
     {
         [$player] = $this->player();
@@ -900,7 +1042,7 @@ class EventReliabilityTest extends TestCase
             [$rounds[0]->id, 1], [$rounds[0]->id, 2], [$rounds[1]->id, 1],
         ])->map(fn ($definition, $index) => Question::create([
             'order_index' => $index + 1, 'trivia_round_id' => $definition[0], 'round_position' => $definition[1],
-            'category' => 'visa', 'type' => 'multiple_choice', 'text' => "Round question {$index}?",
+            'category' => 'general_knowledge', 'type' => 'multiple_choice', 'text' => "Round question {$index}?",
             'options' => ['Yes', 'No'], 'correct_answer' => 'Yes', 'duration_seconds' => 30, 'status' => 'closed',
         ]));
         foreach ($questions as $question) {
@@ -1074,7 +1216,7 @@ class EventReliabilityTest extends TestCase
     public function test_a_question_in_a_completed_round_cannot_be_reopened(): void
     {
         $round = TriviaRound::create([
-            'position' => 1, 'title' => 'Round One', 'category' => 'visa',
+            'position' => 1, 'title' => 'Round One', 'category' => 'general_knowledge',
             'intro_message' => 'Go', 'status' => 'completed',
         ]);
         $question = $this->liveQuestion([

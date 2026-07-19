@@ -33,7 +33,7 @@ test('complete event lifecycle across admin, player and main screen', async ({ b
     await adminPage.locator('input[name="password"]').fill(envValue('ADMIN_PASSWORD'))
     await adminPage.getByRole('button', { name: /Sign In/ }).click()
     await expect(adminPage).toHaveURL(/\/admin$/)
-    await expect(adminPage.getByRole('heading', { name: /VISA FINAL WHISTLE/i })).toBeVisible()
+    await expect(adminPage.getByRole('heading', { name: /DISCMEN FINAL WHISTLE/i })).toBeVisible()
 
     const status = await expectOk(await adminPage.request.get('/api/admin/testing/status'), 'read test status')
     test.skip(status.predictions > 0 || status.answers > 0 || status.results > 0, 'Browser rehearsal requires an empty event and will not delete existing gameplay.')
@@ -58,7 +58,6 @@ test('complete event lifecycle across admin, player and main screen', async ({ b
     await playerPage.getByRole('button', { name: /Join the game/ }).click()
     await playerPage.getByLabel('Nickname *').fill(nickname)
     await playerPage.getByLabel('Create a 4-digit game PIN *').fill('2607')
-    await playerPage.getByText(/I have a Visa card/).click()
     await playerPage.getByText(/I agree to take part/).click()
     await playerPage.getByRole('button', { name: /Create profile/ }).click()
     await expect(playerPage.getByRole('heading', { name: /You're in/ })).toBeVisible()

@@ -12,15 +12,15 @@
       </select>
     </label>
 
-    <div v-if="modelValue" class="flex items-center gap-3 rounded-xl border border-visa-gold/35 bg-visa-gold/10 px-3 py-2.5">
-      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-visa-gold text-xs font-black text-gray-950">
+    <div v-if="modelValue" class="flex items-center gap-3 rounded-xl border border-discmen-accent/35 bg-discmen-accent/10 px-3 py-2.5">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-discmen-accent text-xs font-black text-gray-950">
         {{ initials(modelValue) }}
       </span>
       <div class="min-w-0 flex-1">
-        <p class="text-[10px] font-bold uppercase tracking-widest text-visa-gold">Selected</p>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-discmen-accent">Selected</p>
         <p class="truncate text-sm font-black text-white">{{ selectedLabel }}</p>
       </div>
-      <span class="text-visa-gold" aria-hidden="true">✓</span>
+      <span class="text-discmen-accent" aria-hidden="true">✓</span>
     </div>
   </div>
 </template>
